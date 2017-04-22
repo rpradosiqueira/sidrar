@@ -1,7 +1,7 @@
 Package: sidrar
 Type: Package
 Title: A R interface to IBGE's SIDRA API
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("Renato", "Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
 Maintainer: Renato Prado Siqueira <rpradosiqueira@gmail.com>
 Description: Allows the user to connect with IBGE's (Brazilian Institute 

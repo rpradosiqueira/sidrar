@@ -113,11 +113,23 @@ get_sidra <- function(x,
   if (is.null(geo) || geo == "Brazil") {
 
     path_geo <- "n1/1"
+    
+    if (!is.null(geo.filter)) {
+      message("No filter is necessary in 'geo.filter' argument once 'geo' is set to 'Brazil' (default)")
+      }
 
   } else if (length(geo.filter) > length(geo)) {
 
-    stop("The geo.filter argument must have the same or less length than 'geo'")
-
+    if (is.null(geo) || geo == "Brazil") {
+      
+      message("No filter is necessary in 'geo.filter' argument once 'geo' is set to 'Brazil' (default)")
+      
+    } else {
+      
+      stop("The geo.filter argument must have the same or less length than 'geo'")
+      
+    }
+    
   } else if (length(geo.filter) <= length(geo)) {
 
     for (i in 1:length(geo)) {
@@ -192,6 +204,10 @@ get_sidra <- function(x,
 
   # Classificaoes e categorias (ou secoes)
   if (is.null(classific) || classific == "all") {
+    
+    if (!is.null(category)) {
+      message("Considering all categories once 'classific' was set to 'all' (default)")
+    }
 
     category <- NULL
 
