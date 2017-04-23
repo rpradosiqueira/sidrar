@@ -55,10 +55,10 @@ info_sidra <- function(x, wb = FALSE) {
     v2 <- v2[[2]]
 
     v3 <- data.frame(cod = apply(v2, 1, stringr::str_extract,"[[:digit:]]+"),
-                     desc = apply(v2, 1, stringr::str_replace_all, "([[:digit:]])", "")) %>%
-      dplyr::mutate(cod = stringr::str_trim(.$cod),
-             desc = stringr::str_trim(.$desc)) %>%
-      dplyr::mutate(desc = stringr::str_replace(.$desc, " - casas decimais:  padr\uE3o = , m\uE1ximo =", ""))
+                     desc = apply(v2, 1, stringr::str_replace_all, "([[:digit:]])", ""))
+    v3$cod <- stringr::str_trim(v3$cod)
+    v3$desc <- stringr::str_trim(v3$desc)
+    v3$desc <- stringr::str_replace(v3$desc, " - casas decimais:  padr\uE3o = , m\uE1ximo =", "")
 
     variables <- list("variable" = v3)
 
