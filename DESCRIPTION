@@ -1,13 +1,13 @@
 Package: sidrar
 Type: Package
-Title: A R Interface to IBGE's SIDRA API
+Title: An Interface to IBGE's SIDRA API
 Version: 0.1.1
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
-Description: Allows the user to connect with IBGE's (Brazilian Institute 
-    of Geography and Statistics) SIDRA API in a flexible way. 
-    SIDRA is the acronym to "Sistema IBGE de Recuperacao Automatica" and 
-    is the system where IBGE turns available aggregate data from     
-    their researches.
+Description: Allows the user to connect with IBGE's (Instituto Brasileiro de 
+    Geografia e Estatistica, see <http://www.ibge.gov.br/> for more information)
+    SIDRA API in a flexible way. SIDRA is the acronym to "Sistema IBGE de 
+    Recuperacao Automatica" and is the system where IBGE turns available 
+    aggregate data from their researches.
 Depends: R (>= 3.2.0)
 License: GPL-3
 Encoding: UTF-8

@@ -1,6 +1,12 @@
 ## Resubmission
 This is a resubmission. In this version I have:
 
+* Adjusted the DESCRIPTION file in according to 
+the comments of a CRAN maintaner.
+
+## Resubmission
+This is a resubmission. In this version I have:
+
 * Adjusted the 'info_sidra' function relating to the
 "no visible binding for global variable '.'" note.
 
