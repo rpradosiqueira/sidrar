@@ -11,7 +11,13 @@ The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilia
 Installation
 ------------
 
-You can install *sidrar* from github with:
+Install the release version from CRAN:
+
+``` r
+install.packages("sidrar")
+```
+
+Or the development version from github
 
 ``` r
 # install.packages("devtools")
@@ -53,4 +59,4 @@ get_sidra(x = 1419,
           format = 3)
 ```
 
-To more examples, see the vignette "Introduction to sidrar".
+To more examples, see the vignette ["Introduction to sidrar"](https://cran.r-project.org/web/packages/sidrar/vignettes/Introduction_to_sidrar.html).
