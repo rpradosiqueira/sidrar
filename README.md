@@ -34,7 +34,7 @@ get_sidra          It recovers data from the given table
                    according to the parameters
 
 info_sidra         It allows you to check what parameters
-                   are available for a table via an web browser
+                   are available for a table
                    
 search_sidra       It searches which tables have a particular 
                    word in their names

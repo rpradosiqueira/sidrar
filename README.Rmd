@@ -18,7 +18,13 @@ The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilia
 
 ## Installation
 
-You can install *sidrar* from github with:
+Install the release version from CRAN:
+
+```{r gh-installation, eval = FALSE}
+install.packages("sidrar")
+```
+
+or the development version from github
 
 ```{r gh-installation, eval = FALSE}
 # install.packages("devtools")
@@ -34,7 +40,7 @@ get_sidra          It recovers data from the given table
                    according to the parameters
 
 info_sidra         It allows you to check what parameters
-                   are available for a table via an web browser
+                   are available for a table via
                    
 search_sidra       It searches which tables have a particular 
                    word in their names
@@ -59,4 +65,4 @@ get_sidra(x = 1419,
 
 ```
 
-To more examples, see the vignette "Introduction to sidrar".
+To more examples, see the vignette ["Introduction to sidrar"](https://cran.r-project.org/web/packages/sidrar/vignettes/Introduction_to_sidrar.html).
