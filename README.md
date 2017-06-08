@@ -3,7 +3,7 @@
 sidrar
 ======
 
-[![TeamCity (simple build status)](https://img.shields.io/teamcity/http/teamcity.jetbrains.com/s/bt345.svg)
+[![TeamCity (simple build status)](https://img.shields.io/teamcity/http/teamcity.jetbrains.com/s/bt345.svg)]
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/sidrar)](http://cran.r-project.org/package=sidrar)
 [![CRAC_Downloads](http://cranlogs.r-pkg.org/badges/grand-total/sidrar)](http://cran.rstudio.com/web/packages/sidrar/index.html)
 
