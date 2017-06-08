@@ -38,9 +38,12 @@ For the time being, the "sidrar" package contains only three functions:
 ```{r, eval=FALSE}
 get_sidra          It recovers data from the given table
                    according to the parameters
+                   
+get_sidra2         It allows the user put directly the parameters 
+                   of the TABLE in the API format.            
 
 info_sidra         It allows you to check what parameters
-                   are available for a table via
+                   are available for a table
                    
 search_sidra       It searches which tables have a particular 
                    word in their names

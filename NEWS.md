@@ -1,3 +1,7 @@
+# sidrar 0.2.0
+
+* New function get_sidra2
+
 # sidrar 0.1.1
 
 * Better messages depending of the input arguments

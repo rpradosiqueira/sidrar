@@ -65,7 +65,7 @@ IBGE makes aggregate data from their researches available.
      \item 1: Return only the descriptors' codes
      \item 2: Return only the descriptor's names
      \item 3: Return the codes and names of the geographic level and descriptors' names
-     \item 4: Return the codes and names of the escriptors (Default)
+     \item 4: Return the codes and names of the descriptors (Default)
      }
 }
 \examples{

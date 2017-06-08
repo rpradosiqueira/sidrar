@@ -1,7 +1,7 @@
 Package: sidrar
 Type: Package
 Title: An Interface to IBGE's SIDRA API
-Version: 0.1.1
+Version: 0.2.0
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
 Description: Allows the user to connect with IBGE's (Instituto Brasileiro de 
     Geografia e Estatistica, see <http://www.ibge.gov.br/> for more information)
