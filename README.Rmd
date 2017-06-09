@@ -39,8 +39,8 @@ For the time being, the "sidrar" package contains only three functions:
 get_sidra          It recovers data from the given table
                    according to the parameters
                    
-get_sidra2         It allows the user put directly the parameters 
-                   of the TABLE in the API format.            
+get_sidra2         It allows the user to put directly the
+                   parameters of the table in the API format.            
 
 info_sidra         It allows you to check what parameters
                    are available for a table
