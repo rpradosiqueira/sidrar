@@ -65,4 +65,4 @@ get_sidra(x = 1419,
 
 ```
 
-To more examples, see the vignette ["Introduction to sidrar"](https://cran.r-project.org/web/packages/sidrar/vignettes/Introduction_to_sidrar.html).
+To more examples, see the vignette ["Introduction to sidrar"](https://CRAN.R-project.org/package=sidrar/vignettes/Introduction_to_sidrar.html).
