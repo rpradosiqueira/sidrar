@@ -3,7 +3,7 @@
 sidrar
 ======
 
-[![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/sidrar)](http://cran.r-project.org/package=sidrar) [![CRAN\_Downloads](http://cranlogs.r-pkg.org/badges/grand-total/sidrar)](http://cran.rstudio.com/web/packages/sidrar/index.html)
+[![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/sidrar)](http://cran.r-project.org/package=sidrar) [![CRAC\_Downloads](http://cranlogs.r-pkg.org/badges/grand-total/sidrar)](http://cran.rstudio.com/web/packages/sidrar/index.html)
 
 
 The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilian Institute of Geography and Statistics) SIDRA API within the R environment in an easy and flexible way. SIDRA is the acronym to "Sistema IBGE de Recuperação Automática" and it is the system where IBGE makes aggregate data from their researches available.
