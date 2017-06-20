@@ -1,6 +1,6 @@
 # sidrar 0.2.0
 
-* New function get_sidra2
+* New argument in get_sidra ("api")
 
 # sidrar 0.1.1
 
