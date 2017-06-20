@@ -6,7 +6,7 @@
 \usage{
 get_sidra(x, variable = "allxp", period = "last", geo = "Brazil",
   geo.filter = NULL, classific = "all", category = "all", header = TRUE,
-  format = 4, digits = "default")
+  format = 4, digits = "default", api = NULL)
 }
 \arguments{
 \item{x}{A table from IBGE's SIDRA API.}
@@ -38,6 +38,8 @@ names in header?}
 
 \item{digits}{An integer, "default" or "max". Default to "default" that returns the
 defaults digits to each variable.}
+
+\item{api}{A character element with the api's parameters. Defaults to NULL.}
 }
 \value{
 The function returns a data frame printed by default functions
@@ -59,6 +61,8 @@ IBGE makes aggregate data from their researches available.
 
   When NULL, the arguments \code{classific} and \code{category} return all options
   available.
+  
+  When argument \code{api} is not NULL, all others arguments informed are desconsidered
 
   The \code{format} argument can be set to:
   \itemize{
@@ -84,6 +88,10 @@ get_sidra(1378,
           geo.filter = list("Region" = 3, "Region" = 3),
           classific = c("c1"),
           category = list(1))
+ 
+## Number of informants by state in the Inventory Research (last data available) 
+get_sidra(api = "/t/254/n1/all/n3/all/v/151/p/last\%201/c162/118423/c163/0")
+
 }
 
 }

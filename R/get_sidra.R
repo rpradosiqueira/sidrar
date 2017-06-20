@@ -7,7 +7,7 @@
 #'
 #' @usage get_sidra(x, variable = "allxp", period = "last", geo = "Brazil",
 #'   geo.filter = NULL, classific = "all", category = "all", header = TRUE,
-#'   format = 4, digits = "default")
+#'   format = 4, digits = "default", api = NULL)
 #' @param x A table from IBGE's SIDRA API.
 #' @param variable An integer vector of the variables' codes to be returned.
 #'   Defaults to all variables with exception of "Total".
