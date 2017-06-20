@@ -3,9 +3,6 @@
 sidrar
 ======
 
-[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/sidrar)](http://cran.r-project.org/package=sidrar)
-[![CRAC_Downloads](http://cranlogs.r-pkg.org/badges/grand-total/sidrar)](http://cran.rstudio.com/web/packages/sidrar/index.html)
-
 The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilian Institute of Geography and Statistics) SIDRA API within the R environment in an easy and flexible way. SIDRA is the acronym to "Sistema IBGE de Recuperação Automática" and it is the system where IBGE makes aggregate data from their researches available.
 
 Installation
@@ -17,7 +14,7 @@ Install the release version from CRAN:
 install.packages("sidrar")
 ```
 
-Or the development version from github
+or the development version from github
 
 ``` r
 # install.packages("devtools")
@@ -32,9 +29,6 @@ For the time being, the "sidrar" package contains only three functions:
 ``` r
 get_sidra          It recovers data from the given table
                    according to the parameters
-
-get_sidra2         It allows the user to put directly the 
-                   parameters of the table in the API format.  
                    
 info_sidra         It allows you to check what parameters
                    are available for a table

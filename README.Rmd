@@ -20,13 +20,13 @@ The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilia
 
 Install the release version from CRAN:
 
-```{r gh-installation, eval = FALSE}
+```{r , eval = FALSE}
 install.packages("sidrar")
 ```
 
 or the development version from github
 
-```{r gh-installation, eval = FALSE}
+```{r , eval = FALSE}
 # install.packages("devtools")
 devtools::install_github("rpradosiqueira/sidrar")
 ```
@@ -39,9 +39,6 @@ For the time being, the "sidrar" package contains only three functions:
 get_sidra          It recovers data from the given table
                    according to the parameters
                    
-get_sidra2         It allows the user to put directly the
-                   parameters of the table in the API format.            
-
 info_sidra         It allows you to check what parameters
                    are available for a table
                    
