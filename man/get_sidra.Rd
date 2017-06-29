@@ -39,7 +39,7 @@ names in header?}
 \item{digits}{An integer, "default" or "max". Default to "default" that returns the
 defaults digits to each variable.}
 
-\item{api}{A character element with the api's parameters. Defaults to NULL.}
+\item{api}{A character with the api's parameters. Defaults to NULL.}
 }
 \value{
 The function returns a data frame printed by default functions
@@ -47,7 +47,7 @@ The function returns a data frame printed by default functions
 \description{
 This function allows the user to connect with IBGE's (Instituto Brasileiro de
 Geografia e Estatistica) SIDRA API in a flexible way. \acronym{SIDRA} is the
-acronym to "Sistema IBGE de Recuperacao Automatica" and it is the system where
+acronym to "Sistema IBGE de Recuperação Automática" and it is the system where
 IBGE makes aggregate data from their researches available.
 }
 \details{

@@ -2,12 +2,12 @@
 #'
 #' This function allows the user to connect with IBGE's (Instituto Brasileiro de
 #' Geografia e Estatistica) SIDRA API in a flexible way. \acronym{SIDRA} is the
-#' acronym to "Sistema IBGE de Recuperacao Automatica" and it is the system where
+#' acronym to "Sistema IBGE de Recuperação Automática" and it is the system where
 #' IBGE makes aggregate data from their researches available.
 #'
 #' @usage get_sidra(x, variable = "allxp", period = "last", geo = "Brazil",
 #'   geo.filter = NULL, classific = "all", category = "all", header = TRUE,
-#'   format = 4, digits = "default")
+#'   format = 4, digits = "default", api = NULL)
 #' @param x A table from IBGE's SIDRA API.
 #' @param variable An integer vector of the variables' codes to be returned.
 #'   Defaults to all variables with exception of "Total".
