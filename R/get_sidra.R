@@ -7,7 +7,7 @@
 #'
 #' @usage get_sidra(x, variable = "allxp", period = "last", geo = "Brazil",
 #'   geo.filter = NULL, classific = "all", category = "all", header = TRUE,
-#'   format = 4, digits = "default", api = NULL)
+#'   format = 4, digits = "default")
 #' @param x A table from IBGE's SIDRA API.
 #' @param variable An integer vector of the variables' codes to be returned.
 #'   Defaults to all variables with exception of "Total".
@@ -28,7 +28,7 @@
 #' @param format An integer ranging between 1 and 4. Default to 4. See more in details.
 #' @param digits An integer, "default" or "max". Default to "default" that returns the
 #'   defaults digits to each variable.
-#' @param api A character element with the api's parameters. Defaults to NULL.
+#' @param api A character with the api's parameters. Defaults to NULL.
 #' @details
 #'   \code{period} can be a integer vector with names "first" and/or "last",
 #'   or "all" or a simply character vector with date format %Y%m-%Y%m.
@@ -364,17 +364,17 @@ get_sidra <- function(x,
       
     }
     
-    path=RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
-                              "/t/", x, "/",
-                              path_geo,
-                              "/p/", period,
-                              "/v/", variable,
-                              path_classific,
-                              format, "/h/",
-                              path_header,
-                              digits),
-                       ssl.verifyhost=FALSE,
-                       ssl.verifypeer=FALSE)
+    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
+                                 "/t/", x, "/",
+                                 path_geo,
+                                 "/p/", period,
+                                 "/v/", variable,
+                                 path_classific,
+                                 format, "/h/",
+                                 path_header,
+                                 digits),
+                          ssl.verifyhost=FALSE,
+                          ssl.verifypeer=FALSE)
     
     
   } else {
@@ -384,10 +384,10 @@ get_sidra <- function(x,
     
     message("All others arguments are desconsidered when 'api' is informed")
     
-    path=RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
-                              api),
-                       ssl.verifyhost=FALSE,
-                       ssl.verifypeer=FALSE)
+    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
+                                 api),
+                          ssl.verifyhost=FALSE,
+                          ssl.verifypeer=FALSE)
     
     path_header <- "y"
     
@@ -404,8 +404,8 @@ get_sidra <- function(x,
   } else if (strsplit(path, " ")[[1]][1] == "Tabela" &
              strsplit(path, " ")[[1]][3] == "Tabela"){
     
-    ntable = strsplit(path, " ")[[1]][2]
-    ntable = substr(ntable, 1, nchar(ntable)-1)
+    ntable <- strsplit(path, " ")[[1]][2]
+    ntable <- substr(ntable, 1, nchar(ntable)-1)
     
     stop("This table does not exists.")
     
@@ -419,17 +419,19 @@ get_sidra <- function(x,
     
   } else {
     
-    path = rjson::fromJSON(path)
-    path = as.data.frame(do.call("rbind", path))
+    path <- rjson::fromJSON(path)
+    path <- as.data.frame(do.call("rbind", path))
     
     if (path_header == "y"){
       
-      colnames(path) = unlist(path[1, ])
-      path = path[-1, ]
+      colnames(path) <- unlist(path[1, ])
+      path <- path[-1, ]
       
     }
     
-    id = which(colnames(path) == "V" | colnames(path) == "Valor")
+    path <- tidyr::unnest(path)
+    
+    id <- which(colnames(path) == "V" | colnames(path) == "Valor")
     
     path[ ,id] = suppressWarnings(ifelse(unlist(path[ ,id]) != "..", as.numeric(unlist(path[ ,id])), NA))
     
