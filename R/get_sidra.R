@@ -422,14 +422,14 @@ get_sidra <- function(x,
     path <- rjson::fromJSON(path)
     path <- as.data.frame(do.call("rbind", path))
     
+    path <- tidyr::unnest(path)
+    
     if (path_header == "y"){
       
       colnames(path) <- unlist(path[1, ])
       path <- path[-1, ]
       
     }
-    
-    path <- tidyr::unnest(path)
     
     id <- which(colnames(path) == "V" | colnames(path) == "Valor")
     
