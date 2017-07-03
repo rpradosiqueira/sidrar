@@ -1,3 +1,7 @@
+# sidrar 0.2.2
+
+* Fixed bug in search_sidra (Issue #2)
+
 # sidrar 0.2.1
 
 * Fixed list-column in resultant data.frame in get_sidra (Issue #1)

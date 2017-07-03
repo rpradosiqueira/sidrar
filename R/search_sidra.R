@@ -17,7 +17,7 @@
 
 search_sidra <- function(x) {
 
-  x <- stringr::str_replace(x, " ", "%20")
+  x <- gsub(" ", "%20", x)
 
   a <- xml2::read_html(paste0("https://sidra.ibge.gov.br/Busca?q=", paste0(x, collapse = "%20")))
 
