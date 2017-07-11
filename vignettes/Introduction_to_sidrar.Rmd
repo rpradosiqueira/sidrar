@@ -113,6 +113,28 @@ get_sidra(x = 5939,
 
 ```
 
+<p> <br> </p>
+
+3) Finally, if you want to put the parameters of the API directly, just execute:
+
+```{r, eval = FALSE}
+get_sidra(api = "/t/1378/n1/all/n2/all/v/all/p/all/c1/all/c2/0/c287/0/c455/all/d/v1000093%202")
+
+```
+
+```{r, echo = FALSE}
+get_sidra(api = "/t/1378/n1/all/n2/all/v/all/p/all/c1/all/c2/0/c287/0/c455/all/d/v1000093%202")
+
+```
+
+<p> <br> </p>
+
+For most users the data request is done via the online portal (<https://sidra.ibge.gov.br>). In this case, if you want to save the parameters of the table selected in the portal to a posterior request of the same table via **sidrar**, you should copy the path in the red rectangle and pass to the *api* argument in get_sidra:         
+
+<p> <br> </p>
+
+![](fig2.png)
+
 -------
 
 ### info_sidra

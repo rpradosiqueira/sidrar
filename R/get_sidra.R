@@ -393,7 +393,7 @@ get_sidra <- function(x,
     
   }
   
-  
+
   test1 <- try(rjson::fromJSON(path), silent=TRUE)
   
   
@@ -413,6 +413,11 @@ get_sidra <- function(x,
     
     stop(sprintf("The table %s does not contain the %s variable", x, variable))
     
+  } else if (grepl("Server Error", path)) {
+    
+    stop("Server error: Some argument is misspecified or (probabily) The query will result in a table with more than 20k values. 
+         In this case, you may address to the SIDRA's site and request the data manually to be delivered by an email account.")
+  
   } else if ('try-error' %in% class(test1)) {
     
     stop(path)

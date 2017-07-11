@@ -1,6 +1,8 @@
-# sidrar 0.2.2
+# sidrar 0.2.4
 
 * Fixed bug in search_sidra (Issue #2)
+* Better error messages
+* Vignette updated
 
 # sidrar 0.2.1
 
