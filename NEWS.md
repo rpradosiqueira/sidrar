@@ -1,7 +1,7 @@
 # sidrar 0.2.5
 
 * Fixed bugs in get_sidra (Issue #5, #6 )
-* Tidyr package dependency removed
+* tidyr package dependency removed
 
 # sidrar 0.2.4
 
