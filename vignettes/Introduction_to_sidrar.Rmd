@@ -13,11 +13,6 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 ```
 
-```{r results='hide', echo=FALSE, message=FALSE, warning=FALSE}
-library(magrittr)
-library(stringr)
-library(dplyr)
-```
 
 ## R Interface to the SIDRA's API
 
