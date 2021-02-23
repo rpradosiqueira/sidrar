@@ -87,8 +87,17 @@ info_sidra <- function(x, wb = FALSE) {
         c5[[i+1]] <- a %>% rvest::html_nodes(paste0("#lstClassificacoes_lblQuantidadeCategorias_", i, "+ ", "#tabPrincipal span")) %>%
           rvest::html_text() %>%  stringr::str_replace("\\[[^]]*]", "NA")
         c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "NA"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Toneladas"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Metros cúbicos"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Mil dúzias"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Quilogramas"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Mil litros"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Milheiros"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Nenhuma"]
+        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "Mil árvores"]
         c5[[i+1]] <-  data.frame(cod =  c5[[i+1]][seq(1, length(c5[[i+1]]), 2)],
                                  desc = c5[[i+1]][seq(2, length(c5[[i+1]]), 2)])
+        c5[[1]]$desc <- ifelse(c5[[1]]$desc=="1.10 - Outros", "1.10 - Outros alimentícios", ifelse(c5[[1]]$desc=="2.4 - Outros", "1.10 - Outros aromáticos, medicinais, tóxicos e corantes", ifelse(c5[[1]]$desc=="4.3 - Outras", "4.3 - Outras ceras", ifelse(c5[[1]]$desc=="5.4 - Outras", "5.4 - Outras fibras", ifelse(c5[[1]]$desc=="8.8 - Outros", "8.8 - Outros oleaginosos", ifelse(c5[[1]]$desc=="10.3 - Outros", "10.3 - Outros tanantes", c5[[1]]$desc))))))
 
       }
 
