@@ -38,7 +38,7 @@ install_github("rpradosiqueira/sidrar")
 For the time being, the "sidra" package contains only three functions:
 
 ```{r, eval=FALSE}
-get_sidra          It recovers data from the geven table
+get_sidra          It recovers data from the given table
                    according to the parameters
 
 info_sidra         It allows you to check what parameters
@@ -113,12 +113,12 @@ get_sidra(x = 5939,
 3) Finally, if you want to put the parameters of the API directly, just execute:
 
 ```{r, eval = FALSE}
-get_sidra(api = "/t/1378/n1/all/n2/all/v/all/p/all/c1/all/c2/0/c287/0/c455/all/d/v1000093%202")
+get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
 
 ```
 
 ```{r, echo = FALSE}
-get_sidra(api = "/t/1378/n1/all/n2/all/v/all/p/all/c1/all/c2/0/c287/0/c455/all/d/v1000093%202")
+get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
 
 ```
 

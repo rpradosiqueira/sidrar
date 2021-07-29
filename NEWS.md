@@ -1,6 +1,11 @@
+# sidrar 0.2.6
+
+* Fixed bug in get_sidra (Issue #10)
+* Minor change in the Vignette
+
 # sidrar 0.2.5
 
-* Fixed bugs in get_sidra (Issue #5, #6 )
+* Fixed bugs in get_sidra (Issue #5, #6)
 * "tidyr" and "dplyr" package dependency removed
 
 # sidrar 0.2.4

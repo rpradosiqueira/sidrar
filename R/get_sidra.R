@@ -221,7 +221,7 @@ get_sidra <- function(x,
       
       category <- NULL
       
-      path_classific <- xml2::read_html(paste0("http://api.sidra.ibge.gov.br/desctabapi.aspx?c=", x))
+      path_classific <- xml2::read_html(paste0("https://apisidra.ibge.gov.br/desctabapi.aspx?c=", x))
       path_classific <- rvest::html_nodes(path_classific, "table")
       path_classific <- rvest::html_table(path_classific, fill = TRUE, trim = TRUE)
       path_classific <- unlist(path_classific)
@@ -366,7 +366,7 @@ get_sidra <- function(x,
       
     }
     
-    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
+    path <- RCurl::getURL(paste0("https://apisidra.ibge.gov.br/values",
                                  "/t/", x, "/",
                                  path_geo,
                                  "/p/", period,
@@ -386,7 +386,7 @@ get_sidra <- function(x,
     
     message("All others arguments are desconsidered when 'api' is informed")
     
-    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
+    path <- RCurl::getURL(paste0("https://apisidra.ibge.gov.br/values",
                                  api),
                           ssl.verifyhost=FALSE,
                           ssl.verifypeer=FALSE)

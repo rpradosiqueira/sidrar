@@ -1,7 +1,7 @@
 Package: sidrar
 Type: Package
 Title: An Interface to IBGE's SIDRA API
-Version: 0.2.5
+Version: 0.2.6
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
 Description: Allows the user to connect with IBGE's (Instituto Brasileiro de 
     Geografia e Estatistica, see <http://www.ibge.gov.br/> for more information)
@@ -21,5 +21,7 @@ Imports:
     stringr,
     xml2
 RoxygenNote: 6.0.1
-Suggests: knitr
+Suggests: 
+    knitr,
+    rmarkdown
 VignetteBuilder: knitr
