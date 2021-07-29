@@ -90,6 +90,8 @@ get_sidra <- function(x,
                       digits = "default",
                       api = NULL) {
   
+  baseUrl = "http://api.sidra.ibge.gov.br"
+
   if (is.null(api)) {
     
     if (length(x) != 1) {
@@ -221,7 +223,7 @@ get_sidra <- function(x,
       
       category <- NULL
       
-      path_classific <- xml2::read_html(paste0("http://api.sidra.ibge.gov.br/desctabapi.aspx?c=", x))
+      path_classific <- xml2::read_html(paste0(baseUrl, "/desctabapi.aspx?c=", x))
       path_classific <- rvest::html_nodes(path_classific, "table")
       path_classific <- rvest::html_table(path_classific, fill = TRUE, trim = TRUE)
       path_classific <- unlist(path_classific)
@@ -366,7 +368,7 @@ get_sidra <- function(x,
       
     }
     
-    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
+    path <- RCurl::getURL(paste0(baseUrl, "/values",
                                  "/t/", x, "/",
                                  path_geo,
                                  "/p/", period,
@@ -376,7 +378,12 @@ get_sidra <- function(x,
                                  path_header,
                                  digits),
                           ssl.verifyhost=FALSE,
-                          ssl.verifypeer=FALSE)
+                          ssl.verifypeer=FALSE,
+                          httpheader=c(
+                            "Content-Type" = "application/json",
+                            "Accept" = "application/json"
+                          ),
+                          followlocation=TRUE)
     
     
   } else {
@@ -385,11 +392,15 @@ get_sidra <- function(x,
     if (length(api) != 1) stop("The 'api' argument must have the length equals to 1")
     
     message("All others arguments are desconsidered when 'api' is informed")
-    
-    path <- RCurl::getURL(paste0("http://api.sidra.ibge.gov.br/values",
-                                 api),
+
+    path <- RCurl::getURL(paste0(baseUrl, "/values", api),
                           ssl.verifyhost=FALSE,
-                          ssl.verifypeer=FALSE)
+                          ssl.verifypeer=FALSE,
+                          httpheader=c(
+                            "Content-Type" = "application/json",
+                            "Accept" = "application/json"
+                          ),
+                          followlocation=TRUE)
     
     path_header <- "y"
     
