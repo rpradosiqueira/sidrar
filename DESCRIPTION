@@ -4,15 +4,15 @@ Title: An Interface to IBGE's SIDRA API
 Version: 0.2.6
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
 Description: Allows the user to connect with IBGE's (Instituto Brasileiro de 
-    Geografia e Estatistica, see <http://www.ibge.gov.br/> for more information)
+    Geografia e Estatistica, see <https://www.ibge.gov.br/> for more information)
     SIDRA API in a flexible way. SIDRA is the acronym to "Sistema IBGE de 
     Recuperacao Automatica" and is the system where IBGE turns available 
     aggregate data from their researches.
 Depends: R (>= 3.2.0)
 License: GPL-3
 Encoding: UTF-8
-URL: http://github.com/rpradosiqueira/sidrar
-BugReports: http://github.com/rpradosiqueira/sidrar/issues
+URL: https://github.com/rpradosiqueira/sidrar/
+BugReports: https://github.com/rpradosiqueira/sidrar/issues/
 Imports:
     magrittr,
     RCurl,
