@@ -68,7 +68,7 @@ get_sidra(x = 1419,
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval=FALSE}
 ## Tabela obtida
 library(sidrar)
 
@@ -98,7 +98,7 @@ get_sidra(x = 5939,
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval=FALSE}
 get_sidra(x = 5939,
           variable = 529,
           period = "2014",
@@ -117,7 +117,7 @@ get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval=FALSE}
 get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
 
 ```
@@ -136,7 +136,7 @@ For most users the data request is done via the online portal (<https://sidra.ib
 
 In the previous examples we know how to recover data from tables according to the parameters reported. However, if I do not know what the parameters are, how should I proceed? To verify the parameters (variables, classifications, periods, etc.) of a given table, simply use the function "info_sidra", informing the code of the table. The function returns a list with the possible parameters in the console. However, if wb = TRUE, the user can allow the result to be displayed in an web browser.
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, eval=FALSE}
 info_sidra(5939)
 ```
 
@@ -160,6 +160,6 @@ By placing **y**, we have in this example:
 
 If the user wants to know if there is a table that contains a certain term / word, simply use the function ** search_sidra ** informing the words of interest. The function returns the tables containing these terms in their headings.
 
-```{r}
+```{r, eval=FALSE}
 search_sidra(c("gini"))
 ```

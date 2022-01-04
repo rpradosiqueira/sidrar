@@ -1,3 +1,7 @@
+# sidrar 0.2.7
+
+* Adjusts in the Vignette to CRAN
+
 # sidrar 0.2.6
 
 * Fixed bug in get_sidra (Issue #10)
