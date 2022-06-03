@@ -1,3 +1,7 @@
+# sidrar 0.2.8
+
+* Minor adjusts to address CRAN warnings
+
 # sidrar 0.2.7
 
 * Adjusts in the Vignette to CRAN
