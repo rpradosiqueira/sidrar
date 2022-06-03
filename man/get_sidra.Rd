@@ -99,7 +99,7 @@ get_sidra(api = "/t/254/n1/all/n3/all/v/151/p/last\%201/c162/118423/c163/0")
 \code{\link{info_sidra}}
 }
 \author{
-Renato Prado Siqueira \email{<rpradosiqueira@gmail.com>}
+Renato Prado Siqueira \email{rpradosiqueira@gmail.com}
 }
 \keyword{IBGE}
 \keyword{sidra}

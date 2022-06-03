@@ -25,7 +25,7 @@ search_sidra("contas nacionais")
 \code{\link{get_sidra}}
 }
 \author{
-Renato Prado Siqueira \email{<rpradosiqueira@gmail.com>}
+Renato Prado Siqueira \email{rpradosiqueira@gmail.com}
 }
 \keyword{IBGE}
 \keyword{sidra}
