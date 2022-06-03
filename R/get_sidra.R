@@ -51,7 +51,7 @@
 #'      \item 4: Return the codes and names of the descriptors (Default)
 #'      }
 #' @return The function returns a data frame printed by default functions
-#' @author Renato Prado Siqueira \email{<rpradosiqueira@@gmail.com>}
+#' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
 #' @seealso \code{\link{info_sidra}}
 #' @examples
 #' \dontrun{

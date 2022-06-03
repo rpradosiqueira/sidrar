@@ -6,7 +6,7 @@
 #' @param wb Logical. Should the metadata be open in the web browser?
 #'    Default to FALSE.
 #' @return A list with the all table's parameters.
-#' @author Renato Prado Siqueira \email{<rpradosiqueira@@gmail.com>}
+#' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
 #' @seealso \code{\link{get_sidra}}
 #' @examples
 #' \dontrun{

@@ -4,7 +4,7 @@
 #'
 #' @param x A character vector with the term(s)/word(s) to search.
 #' @return A character vector with the tables' names.
-#' @author Renato Prado Siqueira \email{<rpradosiqueira@@gmail.com>}
+#' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
 #' @seealso \code{\link{get_sidra}}
 #' @examples
 #' \dontrun{
