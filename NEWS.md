@@ -1,3 +1,7 @@
+# sidrar 0.2.9
+
+* Address SSL error
+
 # sidrar 0.2.8
 
 * Minor adjusts to address CRAN warnings

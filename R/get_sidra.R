@@ -366,18 +366,16 @@ get_sidra <- function(x,
       
     }
     
-    path <- RCurl::getURL(paste0("https://apisidra.ibge.gov.br/values",
-                                 "/t/", x, "/",
-                                 path_geo,
-                                 "/p/", period,
-                                 "/v/", variable,
-                                 path_classific,
-                                 format, "/h/",
-                                 path_header,
-                                 digits),
-                          ssl.verifyhost=FALSE,
-                          ssl.verifypeer=FALSE)
+    path <- paste0("https://apisidra.ibge.gov.br/values", 
+                   "/t/", x, "/", 
+                   path_geo, 
+                   "/p/", period,
+                   "/v/", variable, 
+                   path_classific, format, "/h/",
+                   path_header,
+                   digits)
     
+    path <- httr::content(httr::GET(path), as = "text" )
     
   } else {
     
@@ -386,10 +384,7 @@ get_sidra <- function(x,
     
     message("All others arguments are desconsidered when 'api' is informed")
     
-    path <- RCurl::getURL(paste0("https://apisidra.ibge.gov.br/values",
-                                 api),
-                          ssl.verifyhost=FALSE,
-                          ssl.verifypeer=FALSE)
+    path <- httr::content(httr::GET(paste0("https://apisidra.ibge.gov.br/values", api)), as = "text")
     
     path_header <- "y"
     
