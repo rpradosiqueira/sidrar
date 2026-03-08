@@ -382,9 +382,18 @@ get_sidra <- function(x,
     if (!is.character(api)) stop("The 'api' argument must be a character vector")
     if (length(api) != 1) stop("The 'api' argument must have the length equals to 1")
     
-    message("All others arguments are desconsidered when 'api' is informed")
-    
-    path <- httr::content(httr::GET(paste0("https://apisidra.ibge.gov.br/values", api)), as = "text")
+    message("All other arguments are ignored when 'api' is provided.")
+
+    # Strip full URL prefix if user pasted the complete URL
+    base_url <- "https://apisidra.ibge.gov.br/values"
+    api <- sub(base_url, "", api, fixed = TRUE)
+
+    # Ensure api starts with "/"
+    if (!startsWith(api, "/")) {
+      api <- paste0("/", api)
+    }
+
+    path <- httr::content(httr::GET(paste0(base_url, api)), as = "text")
     
     path_header <- "y"
     
@@ -412,8 +421,12 @@ get_sidra <- function(x,
     
   } else if (grepl("Server Error", path)) {
     
-    stop("Server error: Some argument is misspecified or (probabily) The query will result in a table with more than 20k values. 
-         In this case, you may address to the SIDRA's site and request the data manually to be delivered by an email account.")
+    stop(
+      "API request failed. This may be caused by:\n",
+      "- A misspecified argument in the query\n",
+      "- The query exceeding SIDRA's 100,000 row limit\n\n",
+      "For large queries, visit https://sidra.ibge.gov.br to request the data via email."
+    )
   
   } else if ('try-error' %in% class(test1)) {
     
@@ -440,5 +453,5 @@ get_sidra <- function(x,
   }
   
   return(path)
-  
+
 }
