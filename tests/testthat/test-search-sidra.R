@@ -29,6 +29,14 @@ test_that("search_sidra is accent and case insensitive", {
     c("1737" = "IPCA - Série histórica")
   )
   expect_identical(
+    search_sidra("VARIACAO"),
+    c("7060" = "IPCA - Variação mensal e acumulada")
+  )
+  expect_identical(
+    search_sidra("SE\u0301RIE HISTO\u0301RICA"),
+    c("1737" = "IPCA - Série histórica")
+  )
+  expect_identical(
     search_sidra(c("ipca", "acumulada")),
     c("7060" = "IPCA - Variação mensal e acumulada")
   )
