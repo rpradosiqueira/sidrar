@@ -5,14 +5,19 @@ It replaces HTML scraping with official JSON endpoints, restores table
 search, fixes complete API URLs and header-free responses, and adds tests
 while preserving the existing `get_sidra()` defaults and return schema.
 
-## Test environment
+## Test environments
 
 * Windows 11 x64 (build 26200), R 4.6.0 (ucrt)
+* win-builder, Windows Server 2022 x64, R-devel
+  (2026-07-22 r90289 ucrt)
 
 ## R CMD check results
 
 `R CMD check --as-cran --no-manual` was run on the source tarball with CRAN
 incoming remote checks enabled.
+
+The same source tarball was checked on win-builder with R-devel, including
+the PDF and HTML manuals.
 
 0 errors | 0 warnings | 0 notes
 
