@@ -2,30 +2,33 @@
 % Please edit documentation in R/info_sidra.R
 \name{info_sidra}
 \alias{info_sidra}
-\title{Listing all the parameters of a SIDRA's table}
+\title{List the parameters of a SIDRA table}
 \usage{
 info_sidra(x, wb = FALSE)
 }
 \arguments{
-\item{x}{A table from SIDRA's API.}
+\item{x}{A numeric SIDRA table code.}
 
-\item{wb}{Logical. Should the metadata be open in the web browser?
-Default to FALSE.}
+\item{wb}{Logical. When \code{TRUE}, open the official HTML descriptor in the
+default browser. When \code{FALSE}, return structured metadata.}
 }
 \value{
-A list with the all table's parameters.
+When \code{wb = FALSE}, a list with components \code{table}, \code{period},
+\code{variable}, \code{classific_category}, and \code{geo}. When \code{wb = TRUE}, the
+descriptor URL is returned invisibly after the browser is opened.
 }
 \description{
-It returns the parameters and their descriptions of a SIDRA's table.
+Uses the official JSON table descriptor to return variables, periods,
+classifications, categories, and geographic levels available in a table.
 }
 \examples{
 \dontrun{
-info_sidra(1419)
+info_sidra(7060)
+info_sidra(7060, wb = TRUE)
 }
-
 }
 \seealso{
-\code{\link{get_sidra}}
+\code{\link[=get_sidra]{get_sidra()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}

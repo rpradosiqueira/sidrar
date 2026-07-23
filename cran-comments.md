@@ -1,11 +1,25 @@
-## New R CMD check results
+## Release summary
 
-0 errors | 0 warnings | 0 note 
+This update modernizes the package after changes to IBGE's SIDRA services.
+It replaces HTML scraping with official JSON endpoints, restores table
+search, fixes complete API URLs and header-free responses, and adds tests
+while preserving the existing `get_sidra()` defaults and return schema.
 
-## Test environments
-* local OS X install, R 3.3.2
-* win-builder (devel and release)
+## Test environment
+
+* Windows 11 x64 (build 26200), R 4.6.0 (ucrt)
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0 note 
+`R CMD check --as-cran --no-manual` was run on the source tarball with CRAN
+incoming remote checks enabled.
+
+0 errors | 0 warnings | 0 notes
+
+## Downstream compatibility
+
+The current reverse imports (`datazoom.amazonia`, `PNADCperiods`, and
+`SidraFacil`) were audited for their use of the public API. Compatibility
+tests cover the existing argument order, base `data.frame` output, Portuguese
+column names and order, numeric `Valor`, relative percent-encoded API paths,
+and the historical `info_sidra()` list structure.

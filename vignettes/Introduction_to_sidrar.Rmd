@@ -1,165 +1,182 @@
 ---
 title: "Introduction to sidrar"
 author: "Renato Prado Siqueira"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Introduction to sidrar}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
 ```
 
+## Overview
 
-## R Interface to the SIDRA's API
+`sidrar` is an R interface to SIDRA (*Sistema IBGE de Recuperação
+Automática*), the system through which the Brazilian Institute of Geography
+and Statistics (IBGE) publishes aggregate statistics.
 
-The "sidrar" R package seeks to provide direct access to the data of SIDRA - Sistema IBGE de Recuperação Automática - within the R environment in an easy and flexible way.
+The usual workflow is:
+
+1. find a table with `search_sidra()`;
+2. inspect its available dimensions with `info_sidra()`; and
+3. retrieve a selection with `get_sidra()`.
+
+Network-dependent examples are not evaluated while the vignette is built.
 
 ## Installation
 
-To install the version available on CRAN:
+Install the released version from CRAN:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 install.packages("sidrar")
 ```
 
-To install the development version hosted on Github:
+Install the development version from GitHub with `pak`:
 
-```{r, eval=FALSE}
-library(devtools)
-install_github("rpradosiqueira/sidrar")
+```{r, eval = FALSE}
+# install.packages("pak")
+pak::pak("rpradosiqueira/sidrar")
 ```
 
-## Functions
+## Find and inspect a table
 
-For the time being, the "sidra" package contains only three functions:
-
-```{r, eval=FALSE}
-get_sidra          It recovers data from the given table
-                   according to the parameters
-
-info_sidra         It allows you to check what parameters
-                   are available for a table via an web browser
-                   
-search_sidra       It searches which tables have a particular 
-                   word in their names
-```		   
-
-## Examples
-### get_sidra
-
-1) Let's assume that we want the IPCA (Índice de Preços ao Consumidor Amplo) for the city of Campo Grande/MS. However, we will only recover the overall percentage rate in the last 12 months. To do this simply execute:
+`search_sidra()` searches titles in IBGE's official aggregate catalog. Its
+result is a character vector whose names are the SIDRA table codes:
 
 ```{r, eval = FALSE}
 library(sidrar)
 
-get_sidra(x = 1419,
-          variable = 63,
-          period = c("last" = 12),
-          geo = "City",
-          geo.filter = 5002407,
-          classific = "c315",
-          category = list(7169),
-          header = FALSE,
-          format = 3)
-
+search_sidra("IPCA")
+search_sidra(c("contas", "nacionais"))
 ```
 
-```{r, echo = FALSE, eval=FALSE}
-## Tabela obtida
-library(sidrar)
+The search is case- and accent-insensitive. When several terms are supplied,
+all terms must occur in the title, but they need not be adjacent.
 
-get_sidra(x = 1419,
-          variable = 63,
-          period = c(last = "12"),
-          geo = "City",
-          geo.filter = 5002704,
-          classific = "c315",
-          category = list(7169),
-          header = FALSE,
-          format = 3)
-
-```
-
-<p> <br> </p>
-
-2) In this example we will download the Gini index data for the 2014 GDP of the states, containing only the codes in the table (format = 1):
+Once you have a code, inspect the periods, variables, classifications,
+categories, and territorial levels accepted by the table:
 
 ```{r, eval = FALSE}
-get_sidra(x = 5939,
-          variable = 529,
-          period = "2014",
-          geo = "State",
-          header = TRUE,
-          format = 1)
-
+metadata <- info_sidra(7060)
+names(metadata)
+metadata$variable
+metadata$classific_category
+metadata$geo
 ```
 
-```{r, echo = FALSE, eval=FALSE}
-get_sidra(x = 5939,
-          variable = 529,
-          period = "2014",
-          geo = "State",
-          header = TRUE,
-          format = 1)
-
-```
-
-<p> <br> </p>
-
-3) Finally, if you want to put the parameters of the API directly, just execute:
+Set `wb = TRUE` to open the official table descriptor in the default browser.
+The function no longer prompts for confirmation:
 
 ```{r, eval = FALSE}
-get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
-
+info_sidra(7060, wb = TRUE)
 ```
 
-```{r, echo = FALSE, eval=FALSE}
-get_sidra(api = "/t/5938/n3/all/v/37/p/last%201/d/v37%200")
+## Build a structured request
 
+This request retrieves the monthly IPCA for the general index in Campo
+Grande, Mato Grosso do Sul, over the 12 most recent periods:
+
+```{r, eval = FALSE}
+ipca <- get_sidra(
+  x = 7060,
+  variable = 63,
+  period = c(last = 12),
+  geo = "City",
+  geo.filter = list(City = 5002704),
+  classific = "c315",
+  category = list(7169)
+)
 ```
 
-<p> <br> </p>
+`geo.filter` may also select every unit inside a higher territorial level.
+For example, the following pattern requests cities inside Mato Grosso do Sul:
 
-For most users the data request is done via the online portal (<https://sidra.ibge.gov.br>). In this case, if you want to save the parameters of the table selected in the portal to a posterior request of the same table via **sidrar**, you should copy the path in the red rectangle and pass to the *api* argument in get_sidra:         
-
-<p> <br> </p>
-
-![](fig2.png)
-
--------
-
-### info_sidra
-
-In the previous examples we know how to recover data from tables according to the parameters reported. However, if I do not know what the parameters are, how should I proceed? To verify the parameters (variables, classifications, periods, etc.) of a given table, simply use the function "info_sidra", informing the code of the table. The function returns a list with the possible parameters in the console. However, if wb = TRUE, the user can allow the result to be displayed in an web browser.
-
-```{r, echo = FALSE, eval=FALSE}
-info_sidra(5939)
+```{r, eval = FALSE}
+get_sidra(
+  x = 7060,
+  variable = 63,
+  period = "last",
+  geo = "City",
+  geo.filter = list(State = 50),
+  classific = "c315",
+  category = list(7169)
+)
 ```
 
-if **wb = TRUE**:
+The existing defaults remain unchanged: descriptive headers are enabled,
+`format = 4` requests codes and names, `digits = "default"` uses the table's
+standard precision, and `variable = "allxp"` excludes automatically generated
+percentage variables.
 
-```{r, eval=FALSE}
-info_sidra(5939, wb = TRUE)
+## Use an API path or full URL
+
+If a query was assembled elsewhere, pass either its path:
+
+```{r, eval = FALSE}
+get_sidra(
+  api = "/t/7060/n1/all/v/63/p/last/c315/7169"
+)
 ```
 
-```{r, echo=FALSE, error=TRUE}
-cat("Can the web browser be open? (y/n): ")
+or the complete official HTTPS URL:
+
+```{r, eval = FALSE}
+get_sidra(
+  api = paste0(
+    "https://apisidra.ibge.gov.br/values/",
+    "t/7060/n1/all/v/63/p/last/c315/7169"
+  )
+)
 ```
 
-By placing **y**, we have in this example:
+Full URLs are restricted to the official
+`https://apisidra.ibge.gov.br/values` endpoint. Percent-encoded segments such
+as `%20` are preserved. If the path contains `/h/n`, the first observation is
+kept as data instead of being interpreted as a header.
 
-![](fig1.png)
+## Preserve SIDRA's special values
 
--------
+SIDRA uses symbols with specific meanings, including `"-"` for an absolute
+zero, `"X"` for an inhibited value, `".."` when a value does not apply, and
+`"..."` when it is unavailable. Earlier versions returned a numeric `Valor`
+column, so special symbols became `NA`. That remains the default for
+compatibility.
 
-### search_sidra
+Use `value_type = "character"` to keep the symbols directly:
 
-If the user wants to know if there is a table that contains a certain term / word, simply use the function ** search_sidra ** informing the words of interest. The function returns the tables containing these terms in their headings.
-
-```{r, eval=FALSE}
-search_sidra(c("gini"))
+```{r, eval = FALSE}
+raw <- get_sidra(
+  api = "/t/1849/n3/all/v/811/p/2018/c12762/all",
+  value_type = "character"
+)
 ```
+
+Use `value_type = "both"` to keep numeric `Valor` and append `Valor_raw`:
+
+```{r, eval = FALSE}
+both <- get_sidra(
+  api = "/t/1849/n3/all/v/811/p/2018/c12762/all",
+  value_type = "both"
+)
+```
+
+## Network behavior
+
+Requests use HTTPS, UTF-8 decoding, an identifying user agent, a timeout, and
+limited retries for transient failures. Customize the timeout and retry count
+with:
+
+```{r, eval = FALSE}
+options(
+  sidrar.timeout = 120,
+  sidrar.retries = 4
+)
+```
+
+Invalid parameters and API limits are reported with the response returned by
+SIDRA. See the
+[official API help](https://apisidra.ibge.gov.br/home/ajuda) for the complete
+query syntax and current service limits.

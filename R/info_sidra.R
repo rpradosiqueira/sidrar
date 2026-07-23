@@ -1,158 +1,164 @@
-#' Listing all the parameters of a SIDRA's table
+#' List the parameters of a SIDRA table
 #'
-#' It returns the parameters and their descriptions of a SIDRA's table.
+#' Uses the official JSON table descriptor to return variables, periods,
+#' classifications, categories, and geographic levels available in a table.
 #'
-#' @param x A table from SIDRA's API.
-#' @param wb Logical. Should the metadata be open in the web browser?
-#'    Default to FALSE.
-#' @return A list with the all table's parameters.
+#' @param x A numeric SIDRA table code.
+#' @param wb Logical. When `TRUE`, open the official HTML descriptor in the
+#'   default browser. When `FALSE`, return structured metadata.
+#'
+#' @return When `wb = FALSE`, a list with components `table`, `period`,
+#'   `variable`, `classific_category`, and `geo`. When `wb = TRUE`, the
+#'   descriptor URL is returned invisibly after the browser is opened.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
-#' @seealso \code{\link{get_sidra}}
+#' @seealso [get_sidra()]
 #' @examples
 #' \dontrun{
-#' info_sidra(1419)
+#' info_sidra(7060)
+#' info_sidra(7060, wb = TRUE)
 #' }
-#'
 #' @keywords sidra IBGE
 #' @export
-
-
 info_sidra <- function(x, wb = FALSE) {
-
-  if (!is.logical(wb)) {
-
-    stop("'wb' argument must be TRUE or FALSE")
-
-  } else if (wb == FALSE || wb == F) {
-
-    a <- xml2::read_html(paste0("http://api.sidra.ibge.gov.br/desctabapi.aspx?c=", x))
-
-    # Tabela
-    tab1 = a %>%
-      rvest::html_nodes("#lblNumeroTabela") %>%
-      rvest::html_text()
-
-    tab2 = a %>%
-      rvest::html_nodes("#lblNomeTabela") %>%
-      rvest::html_text()
-
-    table <- list("table" = paste0("Tabela ", tab1, ": ", tab2))
-
-
-    # Período
-    p1 = a %>%
-      rvest::html_nodes("#lblPeriodoDisponibilidade") %>%
-      rvest::html_text()
-
-    period <- list("period" = p1)
-
-
-    # Variáveis
-    v1 <- a %>% rvest::html_nodes("#lblVariaveis") %>%
-      rvest::html_text()
-
-    v2 <- a %>% rvest::html_table(fill = TRUE, trim = TRUE)
-    v2 <- v2[[2]]
-
-    v3 <- data.frame(cod = apply(v2, 1, stringr::str_extract,"[[:digit:]]+"),
-                     desc = apply(v2, 1, stringr::str_replace_all, "([[:digit:]])", ""))
-    v3$cod <- stringr::str_trim(v3$cod)
-    v3$desc <- stringr::str_trim(v3$desc)
-    v3$desc <- stringr::str_replace(v3$desc, " - casas decimais:  padr\uE3o = , m\uE1ximo =", "")
-
-    variables <- list("variable" = v3)
-
-    # Classificações e categorias
-    c1 <- rvest::html_nodes(a, "table") %>%
-      rvest::html_table(fill = TRUE, trim = TRUE) %>%
-      unlist() %>%
-      stringr::str_extract("\\C[0-9]+") %>%
-      stringr::str_subset("\\C[0-9]+") %>%
-      base::tolower()
-
-    if (length(c1) >= 1) {
-
-      lc1 <- length(c1)
-
-      c2 <- a %>% rvest::html_nodes(".tituloLinha:nth-child(4)") %>% rvest::html_text()
-
-      c3 <- a %>% rvest::html_nodes(".tituloLinha:nth-child(5)") %>% rvest::html_text()
-
-      c4 <- paste(c1, "=", c2, c3)
-
-      c5 <- list()
-
-      for (i in 0:(lc1-1)) {
-
-        c5[[i+1]] <- a %>% rvest::html_nodes(paste0("#lstClassificacoes_lblQuantidadeCategorias_", i, "+ ", "#tabPrincipal span")) %>%
-          rvest::html_text() %>%  stringr::str_replace("\\[[^]]*]", "NA")
-        c5[[i+1]] <- c5[[i+1]][c5[[i+1]] != "NA"]
-        c5[[i+1]] <-  data.frame(cod =  c5[[i+1]][seq(1, length(c5[[i+1]]), 2)],
-                                 desc = c5[[i+1]][seq(2, length(c5[[i+1]]), 2)])
-
-      }
-
-      names(c5) <- c4
-
-      classific_category <- list("classific_category" = c5)
-
-    } else {
-
-      classific_category <- list("classific_category" = NULL)
-
-    }
-
-
-
-    # Níveis Territoriais
-    trad.geo <- data.frame(cod = as.character(c("n1","n2","n3","n8","n9","n7","n13","n14","n15","n23","n6","n10",
-                                                "n11","n102")),
-                           cod2 = as.character(c("Brazil","Region","State","MesoRegion","MicroRegion",
-                                                 "MetroRegion","MetroRegionDiv","IRD","UrbAglo","PopArrang",
-                                                 "City", "District","subdistrict","Neighborhood")),
-                           level = c(1:14),
-                           order = c(1:5, 10:14, 6:9))
-
-
-    n1 <- rvest::html_nodes(a, "table") %>%
-      rvest::html_table(fill = TRUE, trim = TRUE) %>%
-      unlist() %>%
-      stringr::str_extract("N[0-9]+") %>%
-      stringr::str_subset("N[0-9]+") %>%
-      tolower() %>%
-      as.data.frame()
-
-    n2 <- a %>% rvest::html_nodes("p+ #tabPrincipal span:nth-child(4)") %>% rvest::html_text()
-    n3 <- a %>% rvest::html_nodes("p+ #tabPrincipal span:nth-child(5)") %>% rvest::html_text()
-    n4 <- data.frame(desc = paste(n2, n3))
-
-    n5 <- cbind(n1, n4)
-
-    ngeo <-  merge(trad.geo, n5, by.x = "cod", by.y = ".")
-    ngeo <- ngeo[c("cod2","desc")]
-    names(ngeo) <- c("cod","desc")
-
-    ngeo <- list(geo = ngeo)
-
-    info <- c(table, period, variables, classific_category, ngeo)
-
-    return(info)
-
-
-  } else if (wb == TRUE || wb == T) {
-
-    p <- readline(prompt = "Can the web browser be open? (y/n): ")
-
-    if (p == "y" | p == "Y") {
-
-      shell.exec(paste0("http://api.sidra.ibge.gov.br/desctabapi.aspx?c=", x))
-
-    } else {
-
-      stop(paste("Sorry, I need your permission to show the parameters of the table", x))
-
-    }
-
+  table <- .validate_table(x)
+  if (!is.logical(wb) || length(wb) != 1L || is.na(wb)) {
+    stop("'wb' argument must be TRUE or FALSE", call. = FALSE)
   }
 
+  if (wb) {
+    url <- paste0(.sidra_descriptor_html_base, table)
+    .open_sidra_descriptor(url)
+    return(invisible(url))
+  }
+
+  .descriptor_to_legacy_info(.fetch_descriptor(table))
+}
+
+.descriptor_to_legacy_info <- function(descriptor) {
+  if (!is.list(descriptor) || is.null(descriptor$Id) ||
+        is.null(descriptor$Nome)) {
+    .sidrar_abort(
+      "SIDRA API returned an invalid table descriptor",
+      "sidrar_parse_error"
+    )
+  }
+
+  table <- list(
+    table = paste0(
+      "Tabela ", .scalar_text(descriptor$Id), ": ",
+      .scalar_text(descriptor$Nome)
+    )
+  )
+
+  period_description <- .scalar_text(descriptor$PeriodoDisponibilidade)
+  if (!nzchar(period_description)) {
+    periods <- descriptor$Periodos
+    period_codes <- if (is.null(periods) || length(periods) == 0L) {
+      character()
+    } else {
+      vapply(periods, function(x) .scalar_text(x$Codigo), character(1))
+    }
+    period_description <- paste(period_codes, collapse = ", ")
+  }
+  period <- list(period = period_description)
+
+  variables <- descriptor$Variaveis
+  variable_data <- if (is.null(variables) || length(variables) == 0L) {
+    data.frame(
+      cod = character(),
+      desc = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    rows <- lapply(variables, function(variable) {
+      description <- .scalar_text(variable$Nome)
+      unit <- .scalar_text(variable$UnidadeMedida)
+      exception <- .scalar_text(variable$PeriodoDisponibilidadeExcecao)
+
+      if (nzchar(unit)) {
+        description <- paste0(description, " (", unit, ")")
+      }
+      if (nzchar(exception)) {
+        description <- paste0(description, " [", exception, "]")
+      }
+
+      data.frame(
+        cod = .scalar_text(variable$Id),
+        desc = description,
+        stringsAsFactors = FALSE
+      )
+    })
+    do.call(rbind, rows)
+  }
+  variable <- list(variable = variable_data)
+
+  classifications <- descriptor$Classificacoes
+  if (is.null(classifications) || length(classifications) == 0L) {
+    classification_data <- NULL
+  } else {
+    classification_data <- lapply(classifications, function(classification) {
+      categories <- classification$Categorias
+      if (is.null(categories) || length(categories) == 0L) {
+        data.frame(
+          cod = character(),
+          desc = character(),
+          stringsAsFactors = FALSE
+        )
+      } else {
+        rows <- lapply(categories, function(category) {
+          data.frame(
+            cod = .scalar_text(category$Id),
+            desc = .scalar_text(category$Nome),
+            stringsAsFactors = FALSE
+          )
+        })
+        do.call(rbind, rows)
+      }
+    })
+
+    names(classification_data) <- vapply(
+      classifications,
+      function(classification) {
+        paste0(
+          "c", .scalar_text(classification$Id),
+          " = ", .scalar_text(classification$Nome),
+          " (", length(classification$Categorias), ")"
+        )
+      },
+      character(1)
+    )
+  }
+  classific_category <- list(classific_category = classification_data)
+
+  levels <- descriptor$NiveisTerritoriais
+  if (is.null(levels) || length(levels) == 0L) {
+    geo_data <- data.frame(
+      cod = character(),
+      desc = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    dictionary <- .geo_dictionary()
+    rows <- lapply(levels, function(level) {
+      code <- paste0("n", .scalar_text(level$Id))
+      index <- match(code, dictionary$code)
+      alias <- if (is.na(index)) code else dictionary$description[[index]]
+
+      data.frame(
+        code = code,
+        cod = alias,
+        desc = paste0(
+          .scalar_text(level$Nome),
+          " (", .scalar_text(level$QuantidadeUnidadesAtivas, "0"), ")"
+        ),
+        stringsAsFactors = FALSE
+      )
+    })
+    geo_data <- do.call(rbind, rows)
+    geo_data <- geo_data[order(geo_data$code), c("cod", "desc"), drop = FALSE]
+    rownames(geo_data) <- NULL
+  }
+  geo <- list(geo = geo_data)
+
+  c(table, period, variable, classific_category, geo)
 }

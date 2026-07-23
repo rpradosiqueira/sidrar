@@ -1,29 +1,72 @@
-#' Search SIDRA's tables with determined term(s)
+#' Search SIDRA tables
 #'
-#' It returns all SIDRA's tables with determined term
+#' Searches table titles in the official IBGE aggregate catalog.
 #'
-#' @param x A character vector with the term(s)/word(s) to search.
-#' @return A character vector with the tables' names.
+#' @param x A non-empty character vector containing the search terms.
+#'
+#' @return A named character vector with matching SIDRA table titles. Names
+#'   are the table codes.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
-#' @seealso \code{\link{get_sidra}}
+#' @seealso [get_sidra()] and [info_sidra()]
 #' @examples
 #' \dontrun{
 #' search_sidra("contas nacionais")
+#' search_sidra("IPCA")
 #' }
-#'
 #' @keywords sidra IBGE
-#' @importFrom magrittr %>%
 #' @export
-
 search_sidra <- function(x) {
+  if (!is.character(x) || length(x) == 0L || anyNA(x)) {
+    stop("'x' must be a non-empty character vector", call. = FALSE)
+  }
 
-  x <- gsub(" ", "%20", x)
+  x <- trimws(x)
+  if (any(!nzchar(x))) {
+    stop("'x' must not contain empty search terms", call. = FALSE)
+  }
 
-  a <- xml2::read_html(paste0("https://sidra.ibge.gov.br/Busca?q=", paste0(x, collapse = "%20")))
+  catalog <- .fetch_aggregate_catalog()
+  matches <- unlist(
+    lapply(catalog, function(group) {
+      aggregates <- group$agregados
+      if (is.null(aggregates) || length(aggregates) == 0L) {
+        return(list())
+      }
+      lapply(
+        aggregates,
+        function(aggregate) {
+          list(
+            id = .scalar_text(aggregate$id),
+            title = .scalar_text(aggregate$nome)
+          )
+        }
+      )
+    }),
+    recursive = FALSE
+  )
 
-  s <- a %>%
-    rvest::html_nodes(".busca-link-tabela") %>%
-    rvest::html_text()
+  ids <- vapply(matches, function(match) match$id, character(1))
+  titles <- vapply(matches, function(match) match$title, character(1))
+  query <- .normalize_search_text(x)
+  normalized_titles <- .normalize_search_text(titles)
+  selected <- Reduce(
+    `&`,
+    lapply(
+      query,
+      function(term) grepl(term, normalized_titles, fixed = TRUE)
+    )
+  )
+  if (!any(selected)) {
+    return(character())
+  }
 
-  return(s)
+  result <- titles[selected]
+  names(result) <- ids[selected]
+  result[!duplicated(names(result))]
+}
+
+.normalize_search_text <- function(x) {
+  normalized <- iconv(x, from = "", to = "ASCII//TRANSLIT")
+  normalized[is.na(normalized)] <- x[is.na(normalized)]
+  tolower(normalized)
 }

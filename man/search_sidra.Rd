@@ -2,27 +2,28 @@
 % Please edit documentation in R/search_sidra.R
 \name{search_sidra}
 \alias{search_sidra}
-\title{Search SIDRA's tables with determined term(s)}
+\title{Search SIDRA tables}
 \usage{
 search_sidra(x)
 }
 \arguments{
-\item{x}{A character vector with the term(s)/word(s) to search.}
+\item{x}{A non-empty character vector containing the search terms.}
 }
 \value{
-A character vector with the tables' names.
+A named character vector with matching SIDRA table titles. Names
+are the table codes.
 }
 \description{
-It returns all SIDRA's tables with determined term
+Searches table titles in the official IBGE aggregate catalog.
 }
 \examples{
 \dontrun{
 search_sidra("contas nacionais")
+search_sidra("IPCA")
 }
-
 }
 \seealso{
-\code{\link{get_sidra}}
+\code{\link[=get_sidra]{get_sidra()}} and \code{\link[=info_sidra]{info_sidra()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}

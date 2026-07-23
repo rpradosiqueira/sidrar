@@ -2,101 +2,106 @@
 % Please edit documentation in R/get_sidra.R
 \name{get_sidra}
 \alias{get_sidra}
-\title{Get SIDRA's table}
+\title{Get a SIDRA table}
 \usage{
-get_sidra(x, variable = "allxp", period = "last", geo = "Brazil",
-  geo.filter = NULL, classific = "all", category = "all", header = TRUE,
-  format = 4, digits = "default", api = NULL)
+get_sidra(
+  x,
+  variable = "allxp",
+  period = "last",
+  geo = "Brazil",
+  geo.filter = NULL,
+  classific = "all",
+  category = "all",
+  header = TRUE,
+  format = 4,
+  digits = "default",
+  api = NULL,
+  value_type = c("numeric", "character", "both")
+)
 }
 \arguments{
-\item{x}{A table from IBGE's SIDRA API.}
+\item{x}{A numeric SIDRA table code. It may be omitted when \code{api} is used.}
 
-\item{variable}{An integer vector of the variables' codes to be returned.
-Defaults to all variables with exception of "Total".}
+\item{variable}{A vector of variable codes. Defaults to \code{"allxp"}, which
+selects all variables except automatically generated percentages.}
 
-\item{period}{A character vector describing the period of data. Defaults to
-the last available.}
+\item{period}{A character vector of period codes, \code{"all"}, or a single
+named value such as \code{c(last = 12)} or \code{c(first = 5)}.}
 
-\item{geo}{A character vector describing the geographic levels of the data.
-Defauts to "Brazil".}
+\item{geo}{A character vector containing supported geographic levels.
+Defaults to \code{"Brazil"}.}
 
-\item{geo.filter}{A (named) list object with the specific item of the
-geographic level or all itens of a determined higher geografic level. It should
-be used when geo argument is provided, otherwise all geographic units of
-'geo' argument are considered.}
+\item{geo.filter}{A list of geographic filters. Each element corresponds
+positionally to an element of \code{geo}; names may identify a higher
+geographic level, such as \code{list(State = 50)} for cities in a state.}
 
-\item{classific}{A character vector with the table's classification(s). Defaults to
-all.}
+\item{classific}{A vector of classification codes. Defaults to \code{"all"}.}
 
-\item{category}{"all" or a list object with the categories of the classifications
-of \code{classific(s)} argument. Defaults to "all".}
+\item{category}{\code{"all"} or a list containing categories for each
+classification.}
 
-\item{header}{Logical. should the data frame be returned with the description
-names in header?}
+\item{header}{Logical. Should the first API record be used as the returned
+column names?}
 
-\item{format}{An integer ranging between 1 and 4. Default to 4. See more in details.}
+\item{format}{An integer from 1 to 4 controlling the returned descriptor
+fields. See Details.}
 
-\item{digits}{An integer, "default" or "max". Default to "default" that returns the
-defaults digits to each variable.}
+\item{digits}{\code{"default"}, \code{"max"}, or an integer from 0 to 9.}
 
-\item{api}{A character with the api's parameters. Defaults to NULL.}
+\item{api}{A relative SIDRA API path or a complete URL under
+\verb{https://apisidra.ibge.gov.br/values}. When supplied, the other query
+arguments are ignored.}
+
+\item{value_type}{How the value column is returned: \code{"numeric"} preserves
+the historical numeric interface, \code{"character"} preserves SIDRA symbols,
+and \code{"both"} keeps the numeric column and appends a \verb{_raw} column.}
 }
 \value{
-The function returns a data frame printed by default functions
+A base \code{data.frame}.
 }
 \description{
-This function allows the user to connect with IBGE's (Instituto Brasileiro de
-Geografia e Estatistica) SIDRA API in a flexible way. \acronym{SIDRA} is the
-acronym to "Sistema IBGE de Recuperação Automática" and it is the system where
-IBGE makes aggregate data from their researches available.
+Retrieves aggregate data from the Brazilian Institute of Geography and
+Statistics (IBGE) SIDRA API.
 }
 \details{
-\code{period} can be a integer vector with names "first" and/or "last",
-  or "all" or a simply character vector with date format %Y%m-%Y%m.
+Supported values of \code{geo} are \code{"Brazil"}, \code{"Region"}, \code{"State"},
+\code{"IntermediaryRegion"}, \code{"ImmediateRegion"}, \code{"MesoRegion"},
+\code{"MicroRegion"}, \code{"MetroRegion"}, \code{"MetroRegionDiv"}, \code{"IRD"},
+\code{"UrbAglo"}, \code{"PopArrang"}, \code{"City"}, \code{"District"},
+\code{"subdistrict"}, and \code{"Neighborhood"}.
 
-  The \code{geo} argument can be one of "Brazil", "Region", "State",
-  "MesoRegion", "MicroRegion", "MetroRegion", "MetroRegionDiv", "IRD",
-  "UrbAglo", "City", "District","subdistrict","Neighborhood","PopArrang".
-  'geo.filter' lists can/must be named with the same characters.
+\code{format = 1} returns codes, \code{format = 2} returns names, \code{format = 3}
+returns codes and names for geographic units plus names for other
+descriptors, and \code{format = 4} returns codes and names for all descriptors.
 
-  When NULL, the arguments \code{classific} and \code{category} return all options
-  available.
-  
-  When argument \code{api} is not NULL, all others arguments informed are desconsidered
+Requests use HTTPS, UTF-8 decoding, a timeout, and limited retries for
+transient failures. Set \code{options(sidrar.timeout = 120)} or
+\code{options(sidrar.retries = 4)} to override their defaults.
 
-  The \code{format} argument can be set to:
-  \itemize{
-     \item 1: Return only the descriptors' codes
-     \item 2: Return only the descriptor's names
-     \item 3: Return the codes and names of the geographic level and descriptors' names
-     \item 4: Return the codes and names of the descriptors (Default)
-     }
+The SIDRA API uses special value symbols. With the default
+\code{value_type = "numeric"}, non-numeric symbols such as \code{"-"}, \code{"X"},
+\code{".."}, and \code{"..."} become \code{NA}, as in earlier versions. Use
+\code{value_type = "character"} or \code{"both"} when those distinctions matter.
 }
 \examples{
 \dontrun{
-## Requesting table 1419 (Consumer Price Index - IPCA) from the API
-ipca <- get_sidra(1419,
-                  variable = 69,
-                  period = c("201212","201401-201412"),
-                  geo = "City",
-                  geo.filter = list("State" = 50))
+get_sidra(
+  x = 7060,
+  variable = 63,
+  period = c(last = 12),
+  geo = "City",
+  geo.filter = list(State = 50),
+  classific = "c315",
+  category = list(7169)
+)
 
-## Urban population count from Census data (2010) for States and cities of Southest region.
-get_sidra(1378,
-          variable = 93,
-          geo = c("State","City"),
-          geo.filter = list("Region" = 3, "Region" = 3),
-          classific = c("c1"),
-          category = list(1))
- 
-## Number of informants by state in the Inventory Research (last data available) 
-get_sidra(api = "/t/254/n1/all/n3/all/v/151/p/last\%201/c162/118423/c163/0")
-
+get_sidra(
+  api = "/t/7060/n1/all/v/63/p/last/c315/7169/h/n"
+)
 }
-
 }
 \seealso{
-\code{\link{info_sidra}}
+\code{\link[=info_sidra]{info_sidra()}} and \code{\link[=search_sidra]{search_sidra()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}
