@@ -3,4 +3,3 @@
 export(get_sidra)
 export(info_sidra)
 export(search_sidra)
-importFrom(magrittr,"%>%")

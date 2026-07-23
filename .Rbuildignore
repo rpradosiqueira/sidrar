@@ -5,3 +5,7 @@
 ^cran-comments\.md$
 ^CRAN-RELEASE$
 ^CRAN-SUBMISSION$
+^\.github$
+^\.gitattributes$
+^vignettes/fig1\.png$
+^vignettes/fig2\.png$

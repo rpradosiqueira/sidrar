@@ -1,62 +1,94 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-sidrar
-======
 
-[![CRAN\_Status\_Badge](https://www.r-pkg.org/badges/version/sidrar)](https://CRAN.R-project.org/package=sidrar) [![CRAC\_Downloads](https://cranlogs.r-pkg.org/badges/grand-total/sidrar)](https://CRAN.R-project.org/package=sidrar)
+# sidrar
 
+[![CRAN
+status](https://www.r-pkg.org/badges/version/sidrar)](https://CRAN.R-project.org/package=sidrar)
+[![R-CMD-check](https://github.com/rpradosiqueira/sidrar/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/rpradosiqueira/sidrar/actions/workflows/R-CMD-check.yaml)
 
-The goal of *sidrar* is to provide direct access to the data of IBGE's (Brazilian Institute of Geography and Statistics) SIDRA API within the R environment in an easy and flexible way. SIDRA is the acronym to "Sistema IBGE de Recuperação Automática" and it is the system where IBGE makes aggregate data from their researches available.
+`sidrar` provides direct access from R to aggregate data and metadata
+published by the Brazilian Institute of Geography and Statistics (IBGE).
+SIDRA stands for *Sistema IBGE de Recuperação Automática*.
 
-Installation
-------------
+## Installation
 
-Install the release version from CRAN:
+Install the released version from CRAN:
 
 ``` r
 install.packages("sidrar")
 ```
 
-or the development version from github
+Install the development version from GitHub with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("rpradosiqueira/sidrar")
+# install.packages("pak")
+pak::pak("rpradosiqueira/sidrar")
 ```
 
-Functions
----------
+## Main functions
 
-For the time being, the "sidrar" package contains only three functions:
+The package has three public functions:
+
+- `search_sidra()` searches the current official aggregate catalog.
+- `info_sidra()` lists the parameters available for a table.
+- `get_sidra()` retrieves the selected observations.
+
+Table codes are returned as the names of the `search_sidra()` result:
 
 ``` r
-get_sidra          It recovers data from the given table
-                   according to the parameters
-                   
-info_sidra         It allows you to check what parameters
-                   are available for a table
-                   
-search_sidra       It searches which tables have a particular 
-                   word in their names
+search_sidra("IPCA")
+info_sidra(7060)
 ```
 
-Example
--------
+## Retrieve data
 
-Let's assume that we want the IPCA (Índice de Preços ao Consumidor Amplo) for the city of Campo Grande/MS. However, we want to recover only the overall percentage rate in the last 12 months. To do this simply execute:
+This example requests the monthly IPCA for the general index in Campo
+Grande, Mato Grosso do Sul, over the 12 most recent periods:
 
 ``` r
 library(sidrar)
 
-get_sidra(x = 1419,
-          variable = 63,
-          period = c(last = "12"),
-          geo = "City",
-          geo.filter = 5002704,
-          classific = "c315",
-          category = list(7169),
-          header = FALSE,
-          format = 3)
+ipca <- get_sidra(
+  x = 7060,
+  variable = 63,
+  period = c(last = 12),
+  geo = "City",
+  geo.filter = list(City = 5002704),
+  classific = "c315",
+  category = list(7169)
+)
 ```
 
-To more examples, see the vignette ["Introduction to sidrar"](https://CRAN.R-project.org/package=sidrar/vignettes/Introduction_to_sidrar.html).
+You may also pass either a relative API path or a complete official
+HTTPS URL. A request containing `/h/n` is returned without consuming its
+first observation as a header:
+
+``` r
+ipca_brazil <- get_sidra(
+  api = paste0(
+    "https://apisidra.ibge.gov.br/values/",
+    "t/7060/n1/all/v/63/p/last/c315/7169"
+  )
+)
+```
+
+## Preserve special values
+
+By default, `Valor` is numeric for compatibility with earlier releases.
+SIDRA also uses symbols such as `"-"`, `"X"`, `".."`, and `"..."`. Use
+`value_type = "character"` to preserve them in `Valor`, or
+`value_type = "both"` to append `Valor_raw` while retaining numeric
+`Valor`:
+
+``` r
+data <- get_sidra(
+  api = "/t/1849/n3/all/v/811/p/2018/c12762/all",
+  value_type = "both"
+)
+```
+
+For more examples, see the [“Introduction to
+sidrar”](https://CRAN.R-project.org/package=sidrar/vignettes/Introduction_to_sidrar.html)
+vignette and the [official SIDRA API
+documentation](https://apisidra.ibge.gov.br/home/ajuda).
