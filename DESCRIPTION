@@ -5,8 +5,8 @@ Version: 0.3.0
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
 Description: Provides a flexible interface to the aggregate data available
     from the Brazilian Institute of Geography and Statistics (IBGE) through
-    its SIDRA application programming interfaces. SIDRA stands for
-    "Sistema IBGE de Recuperação Automática".
+    its SIDRA application programming interfaces. SIDRA is IBGE's system for
+    retrieving aggregate statistical data.
 Depends: R (>= 3.6.0)
 License: GPL-3
 Encoding: UTF-8
