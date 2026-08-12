@@ -88,6 +88,23 @@ data <- get_sidra(
 )
 ```
 
+## Network behavior and cache
+
+All three public functions query current IBGE services. `sidrar` does
+not create a persistent cache, so save returned objects explicitly when
+a reproducible snapshot is required. Requests use a timeout and limited
+retries for transient failures; customize them with:
+
+``` r
+options(
+  sidrar.timeout = 120,
+  sidrar.retries = 4
+)
+```
+
+Regular package tests are offline. Live API smoke tests run separately
+on a small set of queries to detect availability and schema changes.
+
 For more examples, see the [“Introduction to
 sidrar”](https://CRAN.R-project.org/package=sidrar/vignettes/Introduction_to_sidrar.html)
 vignette and the [official SIDRA API

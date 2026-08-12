@@ -44,6 +44,51 @@ test_that("info_sidra uses the JSON descriptor and validates wb", {
   expect_error(info_sidra(1419, wb = c(TRUE, FALSE)), "TRUE or FALSE")
 })
 
+test_that("info_sidra parses mocked descriptor JSON without network access", {
+  seen_url <- NULL
+  descriptor_json <- jsonlite::toJSON(
+    descriptor_fixture(),
+    auto_unbox = TRUE,
+    null = "null"
+  )
+  testthat::local_mocked_bindings(
+    .sidra_request = function(url) {
+      seen_url <<- url
+      descriptor_json
+    },
+    .package = "sidrar"
+  )
+
+  info <- info_sidra(1419)
+
+  expect_identical(
+    seen_url,
+    "https://apisidra.ibge.gov.br/DescritoresTabela/t/1419"
+  )
+  expect_identical(info$variable$cod, c("63", "2265"))
+  expect_identical(info$geo$cod, c("Brazil", "City", "MetroRegion"))
+})
+
+test_that("empty descriptor dimensions preserve the legacy structure", {
+  descriptor <- descriptor_fixture()
+  descriptor$PeriodoDisponibilidade <- NULL
+  descriptor$Periodos <- list()
+  descriptor$Variaveis <- list()
+  descriptor$Classificacoes <- list()
+  descriptor$NiveisTerritoriais <- list()
+
+  info <- sidrar:::.descriptor_to_legacy_info(descriptor)
+
+  expect_identical(info$period, "")
+  expect_identical(nrow(info$variable), 0L)
+  expect_null(info$classific_category)
+  expect_identical(nrow(info$geo), 0L)
+  expect_error(
+    sidrar:::.descriptor_to_legacy_info(list(Nome = "Incomplete")),
+    class = "sidrar_parse_error"
+  )
+})
+
 test_that("wb uses the portable browser helper without prompting", {
   opened <- NULL
   testthat::local_mocked_bindings(
@@ -54,7 +99,7 @@ test_that("wb uses the portable browser helper without prompting", {
     .package = "sidrar"
   )
 
-  result <- info_sidra(1419, wb = TRUE)
+  expect_invisible(result <- info_sidra(1419, wb = TRUE))
   expect_identical(
     opened,
     "https://apisidra.ibge.gov.br/desctabapi.aspx?c=1419"

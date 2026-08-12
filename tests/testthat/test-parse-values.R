@@ -55,6 +55,41 @@ test_that("malformed and empty responses fail with parse errors", {
     "no header record",
     class = "sidrar_parse_error"
   )
+  expect_error(
+    sidrar:::.parse_sidra_values('{"V":"1"}', FALSE),
+    "unexpected values structure",
+    class = "sidrar_parse_error"
+  )
+})
+
+test_that("header edge cases and raw-column collisions are deterministic", {
+  expect_error(
+    sidrar:::.parse_sidra_values('[{"V":""},{"V":"1"}]', TRUE),
+    "invalid header record",
+    class = "sidrar_parse_error"
+  )
+  expect_error(
+    sidrar:::.parse_sidra_values('[{"V":null},{"V":"1"}]', TRUE),
+    "invalid header record",
+    class = "sidrar_parse_error"
+  )
+
+  header_only <- sidrar:::.parse_sidra_values(
+    '[{"V":"Valor"}]',
+    TRUE
+  )
+  expect_identical(names(header_only), "Valor")
+  expect_identical(nrow(header_only), 0L)
+
+  collision <- sidrar:::.parse_sidra_values(
+    '[{"Valor":"1.5","Valor_raw":"existing"}]',
+    FALSE,
+    "both"
+  )
+  expect_identical(names(collision), c("Valor", "Valor_raw", "Valor_raw.1"))
+  expect_identical(collision$Valor, 1.5)
+  expect_identical(collision$Valor_raw, "existing")
+  expect_identical(collision$Valor_raw.1, "1.5")
 })
 
 test_that("get_sidra accepts full URLs and honors h/n", {

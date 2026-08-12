@@ -11,10 +11,17 @@ search_sidra(x)
 }
 \value{
 A named character vector with matching SIDRA table titles. Names
-are the table codes.
+are the table codes. Returns \code{character(0)} when there are no matches.
 }
 \description{
 Searches table titles in the official IBGE aggregate catalog.
+}
+\details{
+Matching is case- and accent-insensitive. When \code{x} contains
+multiple terms, every term must occur in the title, but the terms need
+not be adjacent. The catalog is requested live and is not cached by the
+package. The timeout and retry options described in \code{\link[=get_sidra]{get_sidra()}} also
+apply.
 }
 \examples{
 \dontrun{

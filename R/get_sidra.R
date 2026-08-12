@@ -7,7 +7,8 @@
 #' @param variable A vector of variable codes. Defaults to `"allxp"`, which
 #'   selects all variables except automatically generated percentages.
 #' @param period A character vector of period codes, `"all"`, or a single
-#'   named value such as `c(last = 12)` or `c(first = 5)`.
+#'   named value such as `c(last = 12)` or `c(first = 5)`. Defaults to
+#'   `"last"`, the latest available period.
 #' @param geo A character vector containing supported geographic levels.
 #'   Defaults to `"Brazil"`.
 #' @param geo.filter A list of geographic filters. Each element corresponds
@@ -41,7 +42,8 @@
 #'
 #' Requests use HTTPS, UTF-8 decoding, a timeout, and limited retries for
 #' transient failures. Set `options(sidrar.timeout = 120)` or
-#' `options(sidrar.retries = 4)` to override their defaults.
+#' `options(sidrar.retries = 4)` to override their defaults. Responses are
+#' requested live and are not cached by the package.
 #'
 #' The SIDRA API uses special value symbols. With the default
 #' `value_type = "numeric"`, non-numeric symbols such as `"-"`, `"X"`,

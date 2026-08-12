@@ -7,6 +7,10 @@
 #' @param wb Logical. When `TRUE`, open the official HTML descriptor in the
 #'   default browser. When `FALSE`, return structured metadata.
 #'
+#' @details Metadata is requested live from the official descriptor endpoint
+#'   and is not cached by the package. The timeout and retry options described
+#'   in [get_sidra()] also apply.
+#'
 #' @return When `wb = FALSE`, a list with components `table`, `period`,
 #'   `variable`, `classific_category`, and `geo`. When `wb = TRUE`, the
 #'   descriptor URL is returned invisibly after the browser is opened.

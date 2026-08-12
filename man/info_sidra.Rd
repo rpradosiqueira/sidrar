@@ -21,6 +21,11 @@ descriptor URL is returned invisibly after the browser is opened.
 Uses the official JSON table descriptor to return variables, periods,
 classifications, categories, and geographic levels available in a table.
 }
+\details{
+Metadata is requested live from the official descriptor endpoint
+and is not cached by the package. The timeout and retry options described
+in \code{\link[=get_sidra]{get_sidra()}} also apply.
+}
 \examples{
 \dontrun{
 info_sidra(7060)

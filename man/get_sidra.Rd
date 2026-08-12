@@ -26,7 +26,8 @@ get_sidra(
 selects all variables except automatically generated percentages.}
 
 \item{period}{A character vector of period codes, \code{"all"}, or a single
-named value such as \code{c(last = 12)} or \code{c(first = 5)}.}
+named value such as \code{c(last = 12)} or \code{c(first = 5)}. Defaults to
+\code{"last"}, the latest available period.}
 
 \item{geo}{A character vector containing supported geographic levels.
 Defaults to \code{"Brazil"}.}
@@ -76,7 +77,8 @@ descriptors, and \code{format = 4} returns codes and names for all descriptors.
 
 Requests use HTTPS, UTF-8 decoding, a timeout, and limited retries for
 transient failures. Set \code{options(sidrar.timeout = 120)} or
-\code{options(sidrar.retries = 4)} to override their defaults.
+\code{options(sidrar.retries = 4)} to override their defaults. Responses are
+requested live and are not cached by the package.
 
 The SIDRA API uses special value symbols. With the default
 \code{value_type = "numeric"}, non-numeric symbols such as \code{"-"}, \code{"X"},

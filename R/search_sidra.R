@@ -4,8 +4,14 @@
 #'
 #' @param x A non-empty character vector containing the search terms.
 #'
+#' @details Matching is case- and accent-insensitive. When `x` contains
+#'   multiple terms, every term must occur in the title, but the terms need
+#'   not be adjacent. The catalog is requested live and is not cached by the
+#'   package. The timeout and retry options described in [get_sidra()] also
+#'   apply.
+#'
 #' @return A named character vector with matching SIDRA table titles. Names
-#'   are the table codes.
+#'   are the table codes. Returns `character(0)` when there are no matches.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
 #' @seealso [get_sidra()] and [info_sidra()]
 #' @examples
