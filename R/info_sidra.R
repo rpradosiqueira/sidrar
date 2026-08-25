@@ -15,7 +15,7 @@
 #'   `variable`, `classific_category`, and `geo`. When `wb = TRUE`, the
 #'   descriptor URL is returned invisibly after the browser is opened.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
-#' @seealso [get_sidra()]
+#' @seealso [get_sidra()] and [sidra_metadata()]
 #' @examples
 #' \dontrun{
 #' info_sidra(7060)

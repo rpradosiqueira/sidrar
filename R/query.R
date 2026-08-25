@@ -15,6 +15,23 @@
   )
 }
 
+.normalize_geo_names <- function(x, argument = "geo") {
+  dictionary <- .geo_dictionary()
+  values <- trimws(as.character(x))
+  aliases <- c(dictionary$description, dictionary$code)
+  canonical <- c(dictionary$description, dictionary$description)
+  index <- match(tolower(values), tolower(aliases))
+
+  if (anyNA(index)) {
+    stop(
+      sprintf("Some element in '%s' is misspecified", argument),
+      call. = FALSE
+    )
+  }
+
+  unname(canonical[index])
+}
+
 .is_all <- function(x) {
   is.atomic(x) &&
     length(x) == 1L &&
@@ -35,6 +52,7 @@
   if (any(!nzchar(x))) {
     stop(sprintf("'%s' cannot contain empty values", argument), call. = FALSE)
   }
+  .reject_url_delimiters(x, argument)
 
   gsub(" ", "%20", paste(x, collapse = ","), fixed = TRUE)
 }
@@ -49,16 +67,7 @@
     stop("'geo' must be a non-empty character vector", call. = FALSE)
   }
 
-  invalid <- geo[!geo %in% dictionary$description]
-  if (length(invalid) > 0L) {
-    stop(
-      paste0(
-        "Some element in 'geo' argument is misspecified: ",
-        paste(invalid, collapse = " & ")
-      ),
-      call. = FALSE
-    )
-  }
+  geo <- .normalize_geo_names(geo)
 
   if (length(geo) == 1L && identical(geo, "Brazil")) {
     if (!is.null(geo_filter)) {
@@ -105,12 +114,7 @@
     }
   }
 
-  invalid_filters <- filter_names[
-    !filter_names %in% dictionary$description
-  ]
-  if (length(invalid_filters) > 0L) {
-    stop("Some element in 'geo.filter' is misspecified", call. = FALSE)
-  }
+  filter_names <- .normalize_geo_names(filter_names, "geo.filter")
 
   geo_index <- match(geo, dictionary$description)
   filter_index <- match(filter_names, dictionary$description)
@@ -136,6 +140,60 @@
   paste(paths, collapse = "/")
 }
 
+.build_geo_view_path <- function(geo_view) {
+  if (length(geo_view) != 1L || is.na(geo_view) || !is.atomic(geo_view)) {
+    stop("'geo_view' must identify exactly one territorial view", call. = FALSE)
+  }
+
+  value <- trimws(tolower(as.character(geo_view)))
+  value <- sub("^g", "", value)
+  if (!nzchar(value) || !grepl("^[0-9]+$", value)) {
+    stop(
+      "'geo_view' must be a numeric SIDRA territorial view code",
+      call. = FALSE
+    )
+  }
+
+  paste0("g/", value)
+}
+
+.build_extinct_path <- function(include_extinct) {
+  if (!is.logical(include_extinct) || length(include_extinct) != 1L ||
+        is.na(include_extinct)) {
+    stop("'include_extinct' must be either TRUE or FALSE", call. = FALSE)
+  }
+
+  if (include_extinct) "/u/y" else ""
+}
+
+.build_territory_path <- function(
+  geo,
+  geo_filter = NULL,
+  geo_view = NULL,
+  include_extinct = FALSE
+) {
+  extinct_path <- .build_extinct_path(include_extinct)
+
+  if (!is.null(geo_view)) {
+    if (!is.null(geo) || !is.null(geo_filter)) {
+      stop(
+        "'geo_view' is mutually exclusive with 'geo' and 'geo.filter'",
+        call. = FALSE
+      )
+    }
+    if (include_extinct) {
+      stop(
+        "'include_extinct' is only available for 'geo' (N) selections",
+        call. = FALSE
+      )
+    }
+
+    return(.build_geo_view_path(geo_view))
+  }
+
+  paste0(.build_geo_path(geo, geo_filter), extinct_path)
+}
+
 .normalize_classifications <- function(classific) {
   if ((!is.character(classific) && !is.numeric(classific)) ||
         length(classific) == 0L || anyNA(classific)) {
@@ -148,7 +206,15 @@
     stop("Some element in 'classific' is misspecified", call. = FALSE)
   }
 
-  ifelse(startsWith(classific, "c"), classific, paste0("c", classific))
+  classific <- ifelse(
+    startsWith(classific, "c"),
+    classific,
+    paste0("c", classific)
+  )
+  if (anyDuplicated(classific)) {
+    stop("'classific' cannot contain duplicates", call. = FALSE)
+  }
+  classific
 }
 
 .build_classification_path <- function(classific, category = "all") {
@@ -251,7 +317,9 @@
       )
     }
 
-    return(paste0(period_names[[1L]], "%20", as.character(period[[1L]])))
+    value <- as.character(period[[1L]])
+    .reject_url_delimiters(value, "period")
+    return(paste0(period_names[[1L]], "%20", value))
   }
 
   if (!is.character(period)) {
@@ -260,6 +328,8 @@
       call. = FALSE
     )
   }
+
+  .reject_url_delimiters(period, "period")
 
   paste(period, collapse = ",")
 }
@@ -270,7 +340,9 @@
     stop("'variable' must be a non-empty vector", call. = FALSE)
   }
 
-  paste(as.character(variable), collapse = ",")
+  variable <- as.character(variable)
+  .reject_url_delimiters(variable, "variable")
+  paste(variable, collapse = ",")
 }
 
 .build_header_path <- function(header) {
@@ -338,10 +410,17 @@
   category,
   header,
   format,
-  digits
+  digits,
+  geo_view = NULL,
+  include_extinct = FALSE
 ) {
   table <- .validate_table(x)
-  geo_path <- .build_geo_path(geo, geo_filter)
+  geo_path <- .build_territory_path(
+    geo = geo,
+    geo_filter = geo_filter,
+    geo_view = geo_view,
+    include_extinct = include_extinct
+  )
   period_path <- .build_period_path(period)
   variable_path <- .build_variable_path(variable)
   classification_path <- .resolve_classification_path(
@@ -360,8 +439,147 @@
     "/h/", header_path,
     .build_digits_path(digits)
   )
+  .validate_sidra_url_semantics(url)
 
-  list(url = url, header = identical(header_path, "y"))
+  list(
+    url = url,
+    header = identical(header_path, "y"),
+    parameters = list(
+      table = table,
+      variable = variable,
+      period = period,
+      geo = geo,
+      geo_filter = geo_filter,
+      geo_view = geo_view,
+      include_extinct = include_extinct,
+      classific = classific,
+      category = category,
+      header = header,
+      format = format,
+      digits = digits
+    )
+  )
+}
+
+#' Build a SIDRA query without downloading values
+#'
+#' Constructs and validates a SIDRA values URL. This is useful for inspecting
+#' a request or passing it to [sidra_plan()] before any values are downloaded.
+#'
+#' @param x A numeric SIDRA table code. It may be omitted when `api` is used.
+#' @param variable A vector of variable codes. The special selections `"all"`
+#'   and `"allxp"` are also accepted.
+#' @param period A character vector of period codes, `"all"`, or a single
+#'   named value such as `c(last = 12)` or `c(first = 5)`.
+#' @param geo A character vector with geographic aliases or `nNN` level codes.
+#'   Aliases and codes are case-insensitive.
+#' @param geo.filter A list of geographic filters corresponding to `geo`.
+#'   Names may be aliases or `nNN` codes and are case-insensitive.
+#' @param classific A vector of classification codes.
+#' @param category `"all"` or a list of categories for each classification.
+#' @param header Logical. Should the API include its header record?
+#' @param format An integer from 1 to 4 controlling descriptor fields.
+#' @param digits `"default"`, `"max"`, or an integer from 0 to 9.
+#' @param api A relative SIDRA API path or complete official values URL. When
+#'   supplied, the other URL-building arguments are ignored.
+#' @param value_type Preferred value representation for a later collection:
+#'   `"numeric"`, `"character"`, or `"both"`. It does not change the URL.
+#' @param geo_view Optional numeric SIDRA territorial-view code. Territorial
+#'   views (`G`) cannot be combined with `geo` or `geo.filter` (`N`).
+#' @param include_extinct Logical. Add `/u/y` to an `N` query so extinct
+#'   territorial units may be returned. It cannot be used with `geo_view`.
+#'
+#' @return A list of class `sidra_query` with stable `url`, `header`, and
+#'   `parameters` components. No values are downloaded.
+#' @seealso [get_sidra()] and [sidra_plan()]
+#' @examples
+#' query <- sidra_query(
+#'   1612,
+#'   variable = 214,
+#'   period = "2021",
+#'   geo = "n1",
+#'   classific = "c81",
+#'   category = list(2702)
+#' )
+#' query
+#' @export
+sidra_query <- function(
+  x,
+  variable = "allxp",
+  period = "last",
+  geo = "Brazil",
+  geo.filter = NULL, # nolint: object_name_linter. Matches get_sidra().
+  classific = "all",
+  category = "all",
+  header = TRUE,
+  format = 4,
+  digits = "default",
+  api = NULL,
+  value_type = c("numeric", "character", "both"),
+  geo_view = NULL,
+  include_extinct = FALSE
+) {
+  value_type <- match.arg(value_type)
+
+  if (is.null(api)) {
+    if (missing(x)) {
+      stop("'x' is required when 'api' is not supplied", call. = FALSE)
+    }
+
+    query_arguments <- list(
+      variable = variable,
+      period = period,
+      geo = geo,
+      `geo.filter` = geo.filter,
+      classific = classific,
+      category = category,
+      geo_view = geo_view
+    )
+    for (argument in names(query_arguments)) {
+      .reject_blank_strings(query_arguments[[argument]], argument)
+    }
+
+    selected_geo <- geo
+    if (!is.null(geo_view) && missing(geo)) {
+      selected_geo <- NULL
+    }
+
+    request <- .build_sidra_query(
+      x = x,
+      variable = variable,
+      period = period,
+      geo = selected_geo,
+      geo_filter = geo.filter,
+      classific = classific,
+      category = category,
+      header = header,
+      format = format,
+      digits = digits,
+      geo_view = geo_view,
+      include_extinct = include_extinct
+    )
+    request$parameters$value_type <- value_type
+  } else {
+    url <- .normalize_api_url(api)
+    request <- list(
+      url = url,
+      header = .api_has_header(url),
+      parameters = list(api = url, value_type = value_type)
+    )
+  }
+
+  structure(request, class = c("sidra_query", "list"))
+}
+
+#' @export
+print.sidra_query <- function(x, ...) {
+  cat(
+    "<sidra_query>\n",
+    "URL: ", x$url, "\n",
+    "Header: ", if (isTRUE(x$header)) "yes" else "no", "\n",
+    sep = ""
+  )
+  invisible(x)
 }
 
 .normalize_api_url <- function(api) {
@@ -375,6 +593,9 @@
   api <- trimws(api)
   if (!nzchar(api)) {
     stop("The 'api' argument must not be empty", call. = FALSE)
+  }
+  if (grepl("%(2f|3f|23|5c)", api, ignore.case = TRUE, perl = TRUE)) {
+    stop("'api' cannot contain encoded URL delimiters", call. = FALSE)
   }
 
   if (grepl("^https?://", api, ignore.case = TRUE)) {
@@ -396,7 +617,11 @@
           !identical(tolower(parsed$query$formato), "json")) {
       stop("Only JSON SIDRA responses are supported", call. = FALSE)
     }
+    if (!is.null(parsed$fragment) && nzchar(parsed$fragment)) {
+      stop("'api' must not contain a URL fragment", call. = FALSE)
+    }
 
+    .validate_sidra_url_semantics(api)
     return(api)
   }
 
@@ -413,6 +638,7 @@
     stop("Only JSON SIDRA responses are supported", call. = FALSE)
   }
 
+  .validate_sidra_url_semantics(url)
   url
 }
 
@@ -431,4 +657,34 @@
   }
 
   !identical(tolower(parts[[index + 1L]]), "n")
+}
+
+.validate_sidra_url_semantics <- function(url) {
+  pairs <- .sidra_path_pairs(url)
+  has_n <- any(grepl("^n[0-9]+$", pairs$parameter))
+  has_g <- any(pairs$parameter == "g")
+  has_extinct <- any(
+    pairs$parameter == "u" & tolower(trimws(pairs$selection)) == "y"
+  )
+  classifications <- pairs$parameter[
+    grepl("^c[0-9]+$", pairs$parameter)
+  ]
+
+  if (has_n && has_g) {
+    stop(
+      "SIDRA query cannot combine territorial views ('g') with levels ('nNN')",
+      call. = FALSE
+    )
+  }
+  if (has_g && has_extinct) {
+    stop(
+      "SIDRA query cannot combine territorial views ('g') with extinct units ('u/y')",
+      call. = FALSE
+    )
+  }
+  if (anyDuplicated(classifications)) {
+    stop("SIDRA query cannot contain duplicate classifications", call. = FALSE)
+  }
+
+  invisible(url)
 }

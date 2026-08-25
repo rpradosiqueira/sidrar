@@ -1,15 +1,26 @@
 test_that("the public API and defaults remain backward compatible", {
   expect_identical(
     sort(getNamespaceExports("sidrar")),
-    sort(c("get_sidra", "info_sidra", "search_sidra"))
+    sort(c(
+      "get_sidra", "info_sidra", "search_sidra",
+      "sidra_cache_clear", "sidra_cache_info", "sidra_catalog",
+      "sidra_collect", "sidra_locations", "sidra_metadata",
+      "sidra_periods", "sidra_plan", "sidra_provenance",
+      "sidra_query", "sidra_split"
+    ))
   )
 
+  legacy_get_arguments <- c(
+    "x", "variable", "period", "geo", "geo.filter", "classific",
+    "category", "header", "format", "digits", "api", "value_type"
+  )
   expect_identical(
-    names(formals(get_sidra)),
-    c(
-      "x", "variable", "period", "geo", "geo.filter", "classific",
-      "category", "header", "format", "digits", "api", "value_type"
-    )
+    names(formals(get_sidra))[seq_along(legacy_get_arguments)],
+    legacy_get_arguments
+  )
+  expect_identical(
+    tail(names(formals(get_sidra)), 2L),
+    c("geo_view", "include_extinct")
   )
   expect_identical(names(formals(info_sidra)), c("x", "wb"))
   expect_identical(names(formals(search_sidra)), "x")
@@ -26,6 +37,8 @@ test_that("the public API and defaults remain backward compatible", {
     get_defaults$value_type,
     quote(c("numeric", "character", "both"))
   )
+  expect_null(get_defaults$geo_view)
+  expect_identical(get_defaults$include_extinct, FALSE)
   expect_identical(formals(info_sidra)$wb, FALSE)
 })
 

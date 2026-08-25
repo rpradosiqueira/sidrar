@@ -99,7 +99,7 @@ test_that("live special values can be preserved", {
   expect_true(all(is.na(result$Valor[result$Valor_raw == "X"])))
 })
 
-test_that("the live descriptor and catalog endpoints respond", {
+test_that("the live discovery endpoints respond", {
   skip_on_cran()
   skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")
   live_api_pause()
@@ -107,6 +107,12 @@ test_that("the live descriptor and catalog endpoints respond", {
   info <- info_sidra(7060)
   live_api_pause()
   matches <- search_sidra("IPCA")
+  live_api_pause()
+  catalog <- sidra_catalog()
+  live_api_pause()
+  metadata <- sidra_metadata(7060)
+  live_api_pause()
+  locations <- sidra_locations(7060, "N1")
 
   expect_identical(
     names(info),
@@ -117,4 +123,56 @@ test_that("the live descriptor and catalog endpoints respond", {
   expect_match(names(info$classific_category)[[1L]], "^c[0-9]+ ")
   expect_gt(length(matches), 0L)
   expect_true(all(nzchar(names(matches))))
+  expect_true(all(c("table_id", "table_name") %in% names(catalog)))
+  expect_true("7060" %in% catalog$table_id)
+  expect_identical(
+    names(metadata),
+    c(
+      "table", "periods", "variables", "classifications", "categories",
+      "geographies"
+    )
+  )
+  expect_gt(nrow(metadata$periods), 0L)
+  expect_gt(nrow(metadata$variables), 0L)
+  hierarchy_order <- split(
+    metadata$categories$category_order,
+    metadata$categories$classification_id
+  )
+  expect_true(all(vapply(
+    hierarchy_order,
+    function(x) identical(x, seq_along(x)),
+    logical(1)
+  )))
+  expect_true(all(c("location_id", "location_name") %in% names(locations)))
+  expect_gt(nrow(locations), 0L)
+})
+
+test_that("live territorial views and extinct units respond", {
+  skip_on_cran()
+  skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")
+  live_api_pause()
+
+  view <- sidra_collect(sidra_query(
+    1612,
+    variable = 214,
+    period = "2021",
+    classific = "c81",
+    category = list(2702),
+    header = FALSE,
+    geo_view = 44
+  ))
+  live_api_pause()
+  extinct <- sidra_collect(sidra_query(
+    1612,
+    variable = 214,
+    period = "2021",
+    geo = "n3",
+    classific = "c81",
+    category = list(2702),
+    header = FALSE,
+    include_extinct = TRUE
+  ))
+
+  expect_gt(nrow(view), 0L)
+  expect_gt(nrow(extinct), 0L)
 })

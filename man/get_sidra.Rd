@@ -16,7 +16,9 @@ get_sidra(
   format = 4,
   digits = "default",
   api = NULL,
-  value_type = c("numeric", "character", "both")
+  value_type = c("numeric", "character", "both"),
+  geo_view = NULL,
+  include_extinct = FALSE
 )
 }
 \arguments{
@@ -30,7 +32,8 @@ named value such as \code{c(last = 12)} or \code{c(first = 5)}. Defaults to
 \code{"last"}, the latest available period.}
 
 \item{geo}{A character vector containing supported geographic levels.
-Defaults to \code{"Brazil"}.}
+Aliases and their \code{nNN} codes are case-insensitive. Defaults to
+\code{"Brazil"}.}
 
 \item{geo.filter}{A list of geographic filters. Each element corresponds
 positionally to an element of \code{geo}; names may identify a higher
@@ -56,6 +59,14 @@ arguments are ignored.}
 \item{value_type}{How the value column is returned: \code{"numeric"} preserves
 the historical numeric interface, \code{"character"} preserves SIDRA symbols,
 and \code{"both"} keeps the numeric column and appends a \verb{_raw} column.}
+
+\item{geo_view}{Optional numeric SIDRA territorial-view code, using the
+API's \code{G} parameter instead of an \code{N} level. It cannot be combined with
+explicitly supplied \code{geo} or \code{geo.filter} values.}
+
+\item{include_extinct}{Logical. Include extinct territorial units in \code{geo}
+queries through the API's \verb{/u/y} parameter. It cannot be combined with
+\code{geo_view}.}
 }
 \value{
 A base \code{data.frame}.
@@ -70,6 +81,8 @@ Supported values of \code{geo} are \code{"Brazil"}, \code{"Region"}, \code{"Stat
 \code{"MicroRegion"}, \code{"MetroRegion"}, \code{"MetroRegionDiv"}, \code{"IRD"},
 \code{"UrbAglo"}, \code{"PopArrang"}, \code{"City"}, \code{"District"},
 \code{"subdistrict"}, and \code{"Neighborhood"}.
+Their corresponding \code{nNN} codes and all aliases are accepted without regard
+to letter case.
 
 \code{format = 1} returns codes, \code{format = 2} returns names, \code{format = 3}
 returns codes and names for geographic units plus names for other
@@ -80,10 +93,28 @@ transient failures. Set \code{options(sidrar.timeout = 120)} or
 \code{options(sidrar.retries = 4)} to override their defaults. Responses are
 requested live and are not cached by the package.
 
+HTTP conditions inherit from \code{sidrar_http_error} and carry \code{status_code},
+\code{response_body}, and \code{url}. Transport failures may additionally inherit
+from \code{sidrar_timeout_error}, \code{sidrar_tls_error}, \code{sidrar_dns_error},
+\code{sidrar_connection_error}, or \code{sidrar_transient_error} when the underlying
+failure can be identified conservatively.
+
+When SIDRA rejects a query for exceeding its per-request value limit,
+\code{get_sidra()} raises a \code{sidrar_limit_error}, which also inherits from
+\code{sidrar_http_error}. The condition records \code{requested_values},
+\code{limit_values}, and \code{minimum_batches}. Split an explicit dimension such as
+\code{period}, \code{geo.filter}, \code{variable}, or \code{category} across disjoint calls and
+combine the returned rows.
+
 The SIDRA API uses special value symbols. With the default
 \code{value_type = "numeric"}, non-numeric symbols such as \code{"-"}, \code{"X"},
 \code{".."}, and \code{"..."} become \code{NA}, as in earlier versions. Use
 \code{value_type = "character"} or \code{"both"} when those distinctions matter.
+
+Geographic identifiers returned by SIDRA should be kept as character
+strings. In particular, \code{"Neighborhood"} (\code{n102}) identifiers belong to
+SIDRA's territorial level and are not census tract identifiers; do not join
+them directly without an official correspondence.
 }
 \examples{
 \dontrun{
@@ -103,7 +134,8 @@ get_sidra(
 }
 }
 \seealso{
-\code{\link[=info_sidra]{info_sidra()}} and \code{\link[=search_sidra]{search_sidra()}}
+\code{\link[=info_sidra]{info_sidra()}}, \code{\link[=search_sidra]{search_sidra()}}, \code{\link[=sidra_query]{sidra_query()}}, and
+\code{\link[=sidra_collect]{sidra_collect()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}

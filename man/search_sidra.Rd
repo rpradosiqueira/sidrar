@@ -30,7 +30,7 @@ search_sidra("IPCA")
 }
 }
 \seealso{
-\code{\link[=get_sidra]{get_sidra()}} and \code{\link[=info_sidra]{info_sidra()}}
+\code{\link[=get_sidra]{get_sidra()}}, \code{\link[=info_sidra]{info_sidra()}}, and \code{\link[=sidra_catalog]{sidra_catalog()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}

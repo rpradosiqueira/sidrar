@@ -22,7 +22,11 @@ The usual workflow is:
 
 1. find a table with `search_sidra()`;
 2. inspect its available dimensions with `info_sidra()`; and
-3. retrieve a selection with `get_sidra()`.
+3. optionally build and inspect a request with `sidra_query()` and
+   `sidra_plan()`;
+4. retrieve a selection with `get_sidra()`; or
+5. split and collect a large explicit request with `sidra_split()` and
+   `sidra_collect()`.
 
 Network-dependent examples are not evaluated while the vignette is built.
 
@@ -74,6 +78,23 @@ The function no longer prompts for confirmation:
 info_sidra(7060, wb = TRUE)
 ```
 
+For programmatic work, use the normalized discovery layer. It preserves codes
+as character strings and returns stable base R data frames:
+
+```{r, eval = FALSE}
+catalog <- sidra_catalog()
+metadata <- sidra_metadata(7060)
+periods <- sidra_periods(7060)
+locations <- sidra_locations(7060, "N1")
+
+names(metadata)
+metadata$variables
+metadata$classifications
+metadata$categories
+```
+
+The legacy `search_sidra()` and `info_sidra()` contracts remain unchanged.
+
 ## Build a structured request
 
 This request retrieves the monthly IPCA for the general index in Campo
@@ -110,6 +131,61 @@ The existing defaults remain unchanged: descriptive headers are enabled,
 `format = 4` requests codes and names, `digits = "default"` uses the table's
 standard precision, and `variable = "allxp"` excludes automatically generated
 percentage variables.
+
+Build the same request without downloading values and inspect the selections
+whose cardinality can be determined offline:
+
+```{r, eval = FALSE}
+query <- sidra_query(
+  x = 7060,
+  variable = 63,
+  period = sprintf("2024%02d", 1:12),
+  geo = "City",
+  geo.filter = list(City = 5002704),
+  classific = "c315",
+  category = list(7169)
+)
+
+query$url
+sidra_plan(query)
+```
+
+No service limit is assumed by the planner. If a limit is known for the
+current request, pass it explicitly with `sidra_plan(query, limit = ...)`.
+
+## Split and collect explicit batches
+
+When one dimension contains many explicit members, split it into disjoint
+batches and collect them sequentially:
+
+```{r, eval = FALSE}
+batches <- sidra_split(query, by = "period", size = 6)
+data <- sidra_collect(batches, provenance = TRUE)
+sidra_provenance(data)
+```
+
+`sidra_collect()` requires identical names and column types across batches. It
+does not sort or deduplicate rows. Category members containing a space are
+SIDRA sums and are kept indivisible. Queries supplied only through `api =`
+cannot be split because their original argument structure is unavailable.
+Relative periods, period ranges, and embedded comma lists must first be
+expanded to one explicit member per vector element. A geographic filter can
+be split only for a query with one non-Brazil territorial level; multiple
+levels would repeat the unchanged levels in every batch.
+
+Territorial views (`G`) and extinct territorial units (`/u/y`) are available
+through additive arguments:
+
+```{r, eval = FALSE}
+sidra_query(1612, geo_view = 44, classific = character())
+sidra_query(
+  1612,
+  geo = "State",
+  geo.filter = list(c(20, 34)),
+  include_extinct = TRUE,
+  classific = character()
+)
+```
 
 ## Use an API path or full URL
 
@@ -175,6 +251,17 @@ options(
   sidrar.retries = 4
 )
 ```
+
+Catalog and metadata caching is explicit and disabled by default. Value
+responses are never cached:
+
+```{r, eval = FALSE}
+metadata <- sidra_metadata(7060, cache = TRUE)
+sidra_cache_info()
+sidra_cache_clear()
+```
+
+Use `refresh = TRUE` to bypass and replace a cached discovery entry.
 
 Invalid parameters and API limits are reported with the response returned by
 SIDRA. See the

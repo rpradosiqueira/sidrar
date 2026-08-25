@@ -13,6 +13,7 @@ test_that("responses with and without a header keep all data rows", {
   expect_identical(names(with_header), c(
     "Nível Territorial (Código)", "Nível Territorial", "Valor"
   ))
+  expect_identical(row.names(with_header), "1")
   expect_equal(with_header$Valor, 0.16)
 
   expect_identical(nrow(without_header), 1L)
@@ -107,13 +108,43 @@ test_that("get_sidra accepts full URLs and honors h/n", {
     "t/7060/n1/all/v/63/p/last/h/n"
   )
   expect_message(
-    result <- get_sidra(api = url),
-    "other arguments are ignored"
+    result <- get_sidra(api = url, value_type = "character"),
+    "query-construction arguments are ignored.*value_type.*still applies"
   )
 
   expect_identical(seen_url, url)
   expect_identical(nrow(result), 1L)
-  expect_equal(result$V, 0.16)
+  expect_identical(result$V, "0.16")
+})
+
+test_that("blank query strings are rejected before making a request", {
+  testthat::local_mocked_bindings(
+    .sidra_request = function(...) {
+      stop("a network request should not be made", call. = FALSE)
+    },
+    .package = "sidrar"
+  )
+
+  expect_error(
+    get_sidra(1, period = "  "),
+    "'period'.*whitespace-only"
+  )
+  expect_error(
+    get_sidra(1, variable = c(63, "\t")),
+    "'variable'.*whitespace-only"
+  )
+  expect_error(
+    get_sidra(1, geo = "City", geo.filter = list(State = " ")),
+    "'geo.filter'.*whitespace-only"
+  )
+  expect_error(
+    get_sidra(1, classific = " "),
+    "'classific'.*whitespace-only"
+  )
+  expect_error(
+    get_sidra(1, classific = 315, category = list(" ")),
+    "'category'.*whitespace-only"
+  )
 })
 
 test_that("documented vector queries work in modern R", {
@@ -143,4 +174,36 @@ test_that("documented vector queries work in modern R", {
     fixed = TRUE
   )
   expect_match(seen_url, "/c1/1/c2/all", fixed = TRUE)
+})
+
+test_that("get_sidra forwards territorial views and extinct-unit selections", {
+  seen <- character()
+  testthat::local_mocked_bindings(
+    .sidra_request = function(url) {
+      seen <<- c(seen, url)
+      values_without_header_json()
+    },
+    .package = "sidrar"
+  )
+
+  get_sidra(
+    1612,
+    variable = 214,
+    period = "2021",
+    classific = character(),
+    header = FALSE,
+    geo_view = 44
+  )
+  get_sidra(
+    1612,
+    variable = 214,
+    period = "2021",
+    geo = "n3",
+    classific = character(),
+    header = FALSE,
+    include_extinct = TRUE
+  )
+
+  expect_match(seen[[1L]], "/g/44/", fixed = TRUE)
+  expect_match(seen[[2L]], "/n3/all/u/y/", fixed = TRUE)
 })
