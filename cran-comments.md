@@ -10,11 +10,14 @@ return contracts remain compatible.
 ## Test environments
 
 * Windows 11 x64 (build 26200), R 4.6.0 (2026-04-24 ucrt)
+* win-builder, Windows Server 2022 x64 (build 20348), R Under development
+  (unstable) (2026-08-24 r90445 ucrt)
 
 ## R CMD check results
 
-`R CMD check --as-cran` was run on the source tarball with CRAN incoming
-remote checks enabled, including the PDF and HTML manuals.
+`R CMD check --as-cran` was run locally on the source tarball with CRAN
+incoming remote checks enabled. The exact same source tarball was checked on
+win-builder with R-devel. Both checks included the PDF and HTML manuals.
 
 0 errors | 0 warnings | 0 notes
 
