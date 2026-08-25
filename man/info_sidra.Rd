@@ -33,7 +33,7 @@ info_sidra(7060, wb = TRUE)
 }
 }
 \seealso{
-\code{\link[=get_sidra]{get_sidra()}}
+\code{\link[=get_sidra]{get_sidra()}} and \code{\link[=sidra_metadata]{sidra_metadata()}}
 }
 \author{
 Renato Prado Siqueira \email{rpradosiqueira@gmail.com}

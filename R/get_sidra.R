@@ -10,7 +10,8 @@
 #'   named value such as `c(last = 12)` or `c(first = 5)`. Defaults to
 #'   `"last"`, the latest available period.
 #' @param geo A character vector containing supported geographic levels.
-#'   Defaults to `"Brazil"`.
+#'   Aliases and their `nNN` codes are case-insensitive. Defaults to
+#'   `"Brazil"`.
 #' @param geo.filter A list of geographic filters. Each element corresponds
 #'   positionally to an element of `geo`; names may identify a higher
 #'   geographic level, such as `list(State = 50)` for cities in a state.
@@ -28,6 +29,12 @@
 #' @param value_type How the value column is returned: `"numeric"` preserves
 #'   the historical numeric interface, `"character"` preserves SIDRA symbols,
 #'   and `"both"` keeps the numeric column and appends a `_raw` column.
+#' @param geo_view Optional numeric SIDRA territorial-view code, using the
+#'   API's `G` parameter instead of an `N` level. It cannot be combined with
+#'   explicitly supplied `geo` or `geo.filter` values.
+#' @param include_extinct Logical. Include extinct territorial units in `geo`
+#'   queries through the API's `/u/y` parameter. It cannot be combined with
+#'   `geo_view`.
 #'
 #' @details
 #' Supported values of `geo` are `"Brazil"`, `"Region"`, `"State"`,
@@ -35,6 +42,8 @@
 #' `"MicroRegion"`, `"MetroRegion"`, `"MetroRegionDiv"`, `"IRD"`,
 #' `"UrbAglo"`, `"PopArrang"`, `"City"`, `"District"`,
 #' `"subdistrict"`, and `"Neighborhood"`.
+#' Their corresponding `nNN` codes and all aliases are accepted without regard
+#' to letter case.
 #'
 #' `format = 1` returns codes, `format = 2` returns names, `format = 3`
 #' returns codes and names for geographic units plus names for other
@@ -45,14 +54,33 @@
 #' `options(sidrar.retries = 4)` to override their defaults. Responses are
 #' requested live and are not cached by the package.
 #'
+#' HTTP conditions inherit from `sidrar_http_error` and carry `status_code`,
+#' `response_body`, and `url`. Transport failures may additionally inherit
+#' from `sidrar_timeout_error`, `sidrar_tls_error`, `sidrar_dns_error`,
+#' `sidrar_connection_error`, or `sidrar_transient_error` when the underlying
+#' failure can be identified conservatively.
+#'
+#' When SIDRA rejects a query for exceeding its per-request value limit,
+#' `get_sidra()` raises a `sidrar_limit_error`, which also inherits from
+#' `sidrar_http_error`. The condition records `requested_values`,
+#' `limit_values`, and `minimum_batches`. Split an explicit dimension such as
+#' `period`, `geo.filter`, `variable`, or `category` across disjoint calls and
+#' combine the returned rows.
+#'
 #' The SIDRA API uses special value symbols. With the default
 #' `value_type = "numeric"`, non-numeric symbols such as `"-"`, `"X"`,
 #' `".."`, and `"..."` become `NA`, as in earlier versions. Use
 #' `value_type = "character"` or `"both"` when those distinctions matter.
 #'
+#' Geographic identifiers returned by SIDRA should be kept as character
+#' strings. In particular, `"Neighborhood"` (`n102`) identifiers belong to
+#' SIDRA's territorial level and are not census tract identifiers; do not join
+#' them directly without an official correspondence.
+#'
 #' @return A base `data.frame`.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
-#' @seealso [info_sidra()] and [search_sidra()]
+#' @seealso [info_sidra()], [search_sidra()], [sidra_query()], and
+#'   [sidra_collect()]
 #' @examples
 #' \dontrun{
 #' get_sidra(
@@ -83,7 +111,9 @@ get_sidra <- function(
   format = 4,
   digits = "default",
   api = NULL,
-  value_type = c("numeric", "character", "both")
+  value_type = c("numeric", "character", "both"),
+  geo_view = NULL,
+  include_extinct = FALSE
 ) {
   value_type <- match.arg(value_type)
 
@@ -92,20 +122,43 @@ get_sidra <- function(
       stop("'x' is required when 'api' is not supplied", call. = FALSE)
     }
 
+    query_arguments <- list(
+      variable = variable,
+      period = period,
+      geo = geo,
+      `geo.filter` = geo.filter,
+      geo_view = geo_view,
+      classific = classific,
+      category = category
+    )
+    for (argument in names(query_arguments)) {
+      .reject_blank_strings(query_arguments[[argument]], argument)
+    }
+
+    selected_geo <- geo
+    if (!is.null(geo_view) && missing(geo)) {
+      selected_geo <- NULL
+    }
+
     request <- .build_sidra_query(
       x = x,
       variable = variable,
       period = period,
-      geo = geo,
+      geo = selected_geo,
       geo_filter = geo.filter,
       classific = classific,
       category = category,
       header = header,
       format = format,
-      digits = digits
+      digits = digits,
+      geo_view = geo_view,
+      include_extinct = include_extinct
     )
   } else {
-    message("All other arguments are ignored when 'api' is provided.")
+    message(
+      "When 'api' is provided, query-construction arguments are ignored; ",
+      "'value_type' still applies."
+    )
     url <- .normalize_api_url(api)
     request <- list(url = url, header = .api_has_header(url))
   }
@@ -157,6 +210,7 @@ get_sidra <- function(
 
     names(result) <- column_names
     result <- result[-1L, , drop = FALSE]
+    row.names(result) <- NULL
   }
 
   value_columns <- which(names(result) %in% c("V", "Valor"))

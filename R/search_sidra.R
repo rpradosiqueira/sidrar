@@ -13,7 +13,7 @@
 #' @return A named character vector with matching SIDRA table titles. Names
 #'   are the table codes. Returns `character(0)` when there are no matches.
 #' @author Renato Prado Siqueira \email{rpradosiqueira@@gmail.com}
-#' @seealso [get_sidra()] and [info_sidra()]
+#' @seealso [get_sidra()], [info_sidra()], and [sidra_catalog()]
 #' @examples
 #' \dontrun{
 #' search_sidra("contas nacionais")

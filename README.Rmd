@@ -40,7 +40,7 @@ pak::pak("rpradosiqueira/sidrar")
 
 ## Main functions
 
-The package has three public functions:
+The original three entry points remain unchanged:
 
 - `search_sidra()` searches the current official aggregate catalog.
 - `info_sidra()` lists the parameters available for a table.
@@ -51,6 +51,45 @@ Table codes are returned as the names of the `search_sidra()` result:
 ```{r, eval = FALSE}
 search_sidra("IPCA")
 info_sidra(7060)
+```
+
+An additive workflow is available for programmatic discovery, planning, and
+larger requests:
+
+- `sidra_catalog()`, `sidra_metadata()`, `sidra_periods()`, and
+  `sidra_locations()` return structured discovery data.
+- `sidra_query()` constructs a request without downloading values, and
+  `sidra_plan()` reports the cardinalities that can be determined offline.
+- `sidra_split()` creates explicit disjoint batches and `sidra_collect()`
+  retrieves them sequentially with schema validation.
+
+## Discover and plan
+
+The structured discovery functions keep identifiers as character strings and
+return stable base R objects:
+
+```{r, eval = FALSE}
+catalog <- sidra_catalog()
+metadata <- sidra_metadata(7060)
+periods <- sidra_periods(7060)
+brazil <- sidra_locations(7060, "N1")
+```
+
+Build and inspect a query before downloading values:
+
+```{r, eval = FALSE}
+query <- sidra_query(
+  x = 7060,
+  variable = 63,
+  period = sprintf("2024%02d", 1:12),
+  geo = "City",
+  geo.filter = list(City = 5002704),
+  classific = "c315",
+  category = list(7169)
+)
+
+query$url
+sidra_plan(query)
 ```
 
 ## Retrieve data
@@ -102,8 +141,18 @@ data <- get_sidra(
 
 ## Network behavior and cache
 
-All three public functions query current IBGE services. `sidrar` does not
-create a persistent cache, so save returned objects explicitly when a
+The legacy functions continue to query current IBGE services on every call.
+The structured discovery functions have an opt-in disk cache; value responses
+are never cached automatically:
+
+```{r, eval = FALSE}
+metadata <- sidra_metadata(7060, cache = TRUE)
+sidra_cache_info()
+sidra_cache_clear()
+```
+
+Cache entries expire after 30 minutes by default. Use `refresh = TRUE` to
+bypass and replace an entry. Save collected values explicitly when a
 reproducible snapshot is required. Requests use a timeout and limited retries
 for transient failures; customize them with:
 
@@ -116,6 +165,61 @@ options(
 
 Regular package tests are offline. Live API smoke tests run separately on a
 small set of queries to detect availability and schema changes.
+
+### Requests above the SIDRA value limit
+
+When SIDRA rejects a request because it exceeds the service's per-request
+value limit, `get_sidra()` raises a `sidrar_limit_error`. Its message reports
+the requested count, the current limit, and the minimum number of calls. The
+condition also inherits from `sidrar_http_error`, so existing error handlers
+continue to work.
+
+`sidra_split()` partitions one explicit dimension without splitting category
+sums or changing the geographic level. A geographic filter is splittable only
+when the query requests one non-Brazil level; otherwise unchanged territorial
+levels could overlap between calls. Relative periods, ranges, and embedded
+comma lists must first be expanded into one explicit code per vector element.
+`sidra_collect()` runs the resulting queries sequentially and refuses to
+combine incompatible schemas:
+
+```{r, eval = FALSE}
+query <- sidra_query(
+  x = table_code,
+  variable = variable_code,
+  period = period_code,
+  geo = "City",
+  classific = classification_code,
+  category = list(category_codes)
+)
+
+batches <- sidra_split(query, by = "category", size = 8)
+data <- sidra_collect(batches, provenance = TRUE)
+sidra_provenance(data)
+```
+
+The appropriate group size depends on the cardinality of every selected
+dimension. Automatic implicit splitting remains disabled.
+
+### Geographic identifiers
+
+Keep geographic identifiers as character strings. SIDRA neighborhood codes
+(`geo = "Neighborhood"`) identify its neighborhood territorial level; they
+are not census tract identifiers and must not be joined directly to census
+tract geometries without an official correspondence.
+
+Structured queries also support official territorial views and extinct
+territorial units:
+
+```{r, eval = FALSE}
+sidra_query(1612, geo_view = 44, classific = character())
+sidra_query(
+  1612,
+  geo = "State",
+  geo.filter = list(c(20, 34)),
+  include_extinct = TRUE,
+  classific = character()
+)
+```
 
 For more examples, see the
 ["Introduction to sidrar"](https://CRAN.R-project.org/package=sidrar/vignettes/Introduction_to_sidrar.html)

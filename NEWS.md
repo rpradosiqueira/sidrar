@@ -1,3 +1,33 @@
+# sidrar 0.5.0
+
+* Added an actionable `sidrar_limit_error` when the SIDRA API rejects a
+  request for exceeding its per-request value limit. The condition remains a
+  `sidrar_http_error` and records the requested count, limit, minimum number
+  of batches, response body, and request URL (#28).
+* Added structured discovery through `sidra_catalog()`, `sidra_metadata()`,
+  `sidra_periods()`, and `sidra_locations()` using official IBGE JSON
+  endpoints. Identifiers remain character vectors and returned schemas are
+  stable when upstream responses are empty or gain fields.
+* Added `sidra_query()` and `sidra_plan()` to inspect URLs, explicit dimension
+  cardinalities, and optional limit risk before retrieving values. No service
+  limit is hard-coded.
+* Added explicit, sequential batching with `sidra_split()` and
+  `sidra_collect()`. Batches must be disjoint, retain their original order,
+  and have identical names and column types before rows are combined.
+* Added opt-in collection provenance through `sidra_provenance()` and opt-in
+  disk caching for normalized catalog and metadata responses. Value responses
+  are never cached by the package.
+* Added territorial-view (`G`) queries, optional extinct units (`/u/y`),
+  case-insensitive geographic aliases, and supported `nNN` level codes.
+* All HTTP errors now carry status, response body, and URL fields. Transport
+  failures can additionally identify timeout, TLS, DNS, connection, and
+  transient failures while remaining `sidrar_http_error` conditions.
+* Improved local input validation, reset row names after processing API
+  headers, rejected structural URL delimiters and duplicate classifications,
+  and clarified that `value_type` still applies when `api` is used.
+* Clarified that SIDRA neighborhood identifiers belong to its territorial
+  level and are not census tract identifiers (#8).
+
 # sidrar 0.3.0
 
 * Replaced fragile HTML scraping with official JSON endpoints for table

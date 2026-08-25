@@ -5,7 +5,10 @@ test_that("the existing public argument order is preserved", {
   )
 
   expect_identical(names(formals(get_sidra))[seq_along(existing)], existing)
-  expect_identical(tail(names(formals(get_sidra)), 1L), "value_type")
+  expect_identical(
+    tail(names(formals(get_sidra)), 3L),
+    c("value_type", "geo_view", "include_extinct")
+  )
 })
 
 test_that("geographic paths preserve requested order and filter association", {
@@ -48,6 +51,53 @@ test_that("geographic validation handles vectors and invalid filters", {
   )
 })
 
+test_that("geographic aliases and nNN codes are case-insensitive", {
+  expect_identical(
+    sidrar:::.build_geo_path(c("state", "N6"), list(REGION = 3, n3 = 50)),
+    "n3/in%20n2%203/n6/in%20n3%2050"
+  )
+  expect_identical(
+    sidrar:::.build_geo_path("n102", 1234),
+    "n102/1234"
+  )
+  expect_identical(
+    sidrar:::.build_geo_path("bRaZiL", NULL),
+    "n1/1"
+  )
+})
+
+test_that("territorial views and extinct units use exclusive URL paths", {
+  expect_identical(
+    sidrar:::.build_territory_path(NULL, geo_view = 44),
+    "g/44"
+  )
+  expect_identical(
+    sidrar:::.build_territory_path(NULL, geo_view = "G44"),
+    "g/44"
+  )
+  expect_identical(
+    sidrar:::.build_territory_path("n3", include_extinct = TRUE),
+    "n3/all/u/y"
+  )
+
+  expect_error(
+    sidrar:::.build_territory_path("Brazil", geo_view = 44),
+    "mutually exclusive"
+  )
+  expect_error(
+    sidrar:::.build_territory_path(NULL, geo_view = 44, include_extinct = TRUE),
+    "only available"
+  )
+  expect_error(
+    sidrar:::.build_territory_path("Brazil", include_extinct = NA),
+    "TRUE or FALSE"
+  )
+  expect_error(
+    sidrar:::.build_geo_view_path("view-44"),
+    "numeric SIDRA"
+  )
+})
+
 test_that("classification categories are composed without being overwritten", {
   expect_identical(
     sidrar:::.build_classification_path(
@@ -63,6 +113,10 @@ test_that("classification categories are composed without being overwritten", {
   expect_error(
     sidrar:::.build_classification_path("c1", c("one", "two")),
     "type 'list'"
+  )
+  expect_error(
+    sidrar:::.build_classification_path(c("c1", "C1"), list(1, 2)),
+    "duplicates"
   )
 })
 
@@ -106,6 +160,18 @@ test_that("period, variable, header, format, and digits are deterministic", {
   expect_error(sidrar:::.build_header_path(NA), "TRUE or FALSE")
   expect_identical(sidrar:::.build_format_path(NULL), "/f/a")
   expect_identical(sidrar:::.build_digits_path(NULL), "/d/s")
+  expect_error(
+    sidrar:::.build_period_path("2021/t/999"),
+    "reserved URL delimiters"
+  )
+  expect_error(
+    sidrar:::.build_variable_path("214%2Fv%2F999"),
+    "reserved URL delimiters"
+  )
+  expect_error(
+    sidrar:::.build_classification_path("c1", list("1/2")),
+    "reserved URL delimiters"
+  )
 
   expect_warning(
     format_path <- sidrar:::.build_format_path(99),
@@ -169,5 +235,102 @@ test_that("relative paths and full official URLs are accepted", {
       sub("https://", "http://", expected, fixed = TRUE)
     ),
     "official HTTPS"
+  )
+  expect_error(
+    sidrar:::.normalize_api_url(
+      "/t/1612/g/44/u/y/p/2021/v/214"
+    ),
+    "extinct units"
+  )
+  expect_error(
+    sidrar:::.normalize_api_url(
+      "/t/1612/n1/1/c81/2702/t/999/n1/1"
+    ),
+    "exactly one table"
+  )
+  expect_error(
+    sidrar:::.normalize_api_url(
+      "/t/1612/n1/1/c81/2702%2Ft%2F999"
+    ),
+    "encoded URL delimiters"
+  )
+  expect_error(
+    sidrar:::.normalize_api_url(
+      "/t/1612/n1/1/c81/1/c81/2"
+    ),
+    "duplicate classifications"
+  )
+})
+
+test_that("sidra_query builds a lightweight request without values", {
+  testthat::local_mocked_bindings(
+    .sidra_request = function(...) {
+      fail("sidra_query() must not download values")
+    },
+    .package = "sidrar"
+  )
+
+  query <- sidrar:::sidra_query(
+    1612,
+    variable = c(214, 215),
+    period = c("2020", "2021"),
+    geo = "CITY",
+    geo.filter = list(n3 = 50),
+    classific = "c81",
+    category = list(c(2702, 2703)),
+    header = FALSE,
+    value_type = "both"
+  )
+
+  expect_s3_class(query, "sidra_query")
+  expect_named(query, c("url", "header", "parameters"))
+  expect_false(query$header)
+  expect_match(query$url, "/n6/in%20n3%2050/", fixed = TRUE)
+  expect_match(query$url, "/c81/2702,2703/", fixed = TRUE)
+  expect_identical(query$parameters$value_type, "both")
+  expect_output(
+    sidrar:::print.sidra_query(query),
+    "<sidra_query>",
+    fixed = TRUE
+  )
+})
+
+test_that("sidra_query supports G paths and official api paths", {
+  view <- sidrar:::sidra_query(
+    1612,
+    variable = 214,
+    period = "2021",
+    classific = "c81",
+    category = list(2702),
+    geo_view = 44
+  )
+  expect_match(view$url, "/t/1612/g/44/p/2021/", fixed = TRUE)
+
+  extinct <- sidrar:::sidra_query(
+    1612,
+    variable = 214,
+    period = "2021",
+    geo = "n3",
+    geo.filter = list(c(20, 34)),
+    classific = "c81",
+    category = list(2702),
+    include_extinct = TRUE
+  )
+  expect_match(extinct$url, "/n3/20,34/u/y/", fixed = TRUE)
+
+  api <- sidrar:::sidra_query(
+    api = "/t/1612/g/44/v/214/p/2021/h/n"
+  )
+  expect_false(api$header)
+  expect_identical(api$parameters$api, api$url)
+
+  expect_error(
+    sidrar:::sidra_query(
+      1612,
+      geo = "Brazil",
+      geo_view = 44,
+      classific = character()
+    ),
+    "mutually exclusive"
   )
 })

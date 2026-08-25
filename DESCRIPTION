@@ -1,12 +1,12 @@
 Package: sidrar
 Type: Package
 Title: An Interface to IBGE's SIDRA API
-Version: 0.3.0
+Version: 0.5.0
 Authors@R: person("Renato", "Prado Siqueira", email = "rpradosiqueira@gmail.com", role = c("aut", "cre"))
-Description: Provides a flexible interface to the aggregate data available
-    from the Brazilian Institute of Geography and Statistics (IBGE) through
-    its SIDRA application programming interfaces. SIDRA is IBGE's system for
-    retrieving aggregate statistical data.
+Description: Provides a flexible interface to discover, inspect, plan, and
+    retrieve aggregate data from the Brazilian Institute of Geography and
+    Statistics (IBGE) through its SIDRA application programming interfaces.
+    SIDRA is IBGE's system for retrieving aggregate statistical data.
 Depends: R (>= 3.6.0)
 License: GPL-3
 Encoding: UTF-8
@@ -17,7 +17,6 @@ Imports:
     httr,
     jsonlite,
     utils
-RoxygenNote: 8.0.0
 Roxygen: list(markdown = TRUE)
 Suggests: 
     knitr,
@@ -25,3 +24,4 @@ Suggests:
     testthat (>= 3.2.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.1.0
