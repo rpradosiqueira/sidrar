@@ -28,6 +28,29 @@ test_that("the reported census query works through the supported endpoints", {
   expect_type(result$Valor, "double")
 })
 
+test_that("PNAD queries retain multiple levels, first periods and precision", {
+  skip_on_cran()
+  skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")
+  live_api_pause()
+
+  result <- suppressMessages(get_sidra(
+    api = paste0(
+      "/t/6468/n1/all/n2/all/n3/all/v/4099/p/first%202/",
+      "d/v4099%201/h/n"
+    ),
+    value_type = "both"
+  ))
+  expect_identical(nrow(result), 66L)
+  expect_setequal(result$NC, c("1", "2", "3"))
+  expect_identical(unique(result$D2C), "4099")
+  expect_identical(length(unique(result$D3C)), 2L)
+  expect_true(all(grepl("^[0-9]+$", result$D1C)))
+  expect_true(all(
+    grepl("^-?[0-9]+[.][0-9]$", result$V_raw) |
+      result$V_raw %in% c("-", "..", "...", "X")
+  ))
+})
+
 test_that("the live SIDRA values endpoint returns a current observation", {
   skip_on_cran()
   skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")

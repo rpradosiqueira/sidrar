@@ -140,7 +140,24 @@ test_that("generic forbidden responses are not misclassified as challenges", {
     "<html><title>Just a moment...</title>Cloudflare</html>",
     '<html><script src="https://challenges.cloudflare.com/turnstile/v0/api.js">',
     '{"message":"_cf_chl_opt and /cdn-cgi/challenge-platform/"}',
-    "Example: <html><script>window._cf_chl_opt = {};</script></html>"
+    "Example: <html><script>window._cf_chl_opt = {};</script></html>",
+    paste0(
+      "<html><head><title>API help</title></head><body>",
+      "If you see Just a moment... or Checking your browser, contact support.",
+      '<a href="https://challenges.cloudflare.com/">Help</a></body></html>'
+    ),
+    paste0(
+      "<html><title>Just a moment...</title>",
+      '<script src="https://challenges.cloudflare.com.example.org/api.js">'
+    ),
+    paste0(
+      "<html><title>Just a moment...</title>",
+      '<script src="https://challenges.cloudflare.com@other.example/api.js">'
+    ),
+    paste0(
+      "<html><title>Troubleshooting Just a moment...</title>",
+      '<a href="https://challenges.cloudflare.com/">Help</a></html>'
+    )
   )
   response <- NULL
   testthat::local_mocked_bindings(
@@ -166,10 +183,51 @@ test_that("generic forbidden responses are not misclassified as challenges", {
   }
 })
 
+test_that("challenge title and exact host cover pages without old markers", {
+  bodies <- c(
+    paste0(
+      '<!DOCTYPE html><html lang="en-US"><head>',
+      "<title>Just a moment...</title>",
+      '<meta http-equiv="content-security-policy" content="',
+      "default-src 'none'; script-src 'nonce-example' 'unsafe-eval' ",
+      'https://challenges.cloudflare.com;"></head><body></body></html>'
+    ),
+    paste0(
+      "\n<HTML><HEAD><TITLE> Checking your browser... </TITLE></HEAD>",
+      '<script src="//challenges.cloudflare.com/turnstile/v0/api.js">',
+      "</script></HTML>"
+    ),
+    paste0(
+      "<html><head><title>Just a moment\u2026</title></head><body>",
+      '<script src="https://CHALLENGES.CLOUDFLARE.COM/api.js">',
+      "</script></body></html>"
+    )
+  )
+  response <- NULL
+  testthat::local_mocked_bindings(
+    RETRY = function(...) response,
+    .package = "httr"
+  )
+  for (status in c(200L, 403L, 503L)) {
+    for (body in bodies) {
+      response <- fake_http_response(status = status, body = body)
+      error <- expect_error(
+        sidrar:::.sidra_request("https://apisidra.ibge.gov.br/values/t/1"),
+        class = "sidrar_challenge_error"
+      )
+      expect_identical(error$status_code, status)
+      expect_identical(error$response_body, body)
+      expect_null(error$cf_ray)
+      expect_false(grepl("<!DOCTYPE", conditionMessage(error), fixed = TRUE))
+    }
+  }
+})
+
 test_that("valid JSON containing challenge-related text remains valid data", {
   text <- paste0(
     '[{"NC":"1","NN":"<html>_cf_chl_opt ',
-    '/cdn-cgi/challenge-platform/ Just a moment Cloudflare</html>",',
+    '/cdn-cgi/challenge-platform/ <title>Just a moment...</title> ',
+    'https://challenges.cloudflare.com/ Cloudflare</html>",',
     '"V":"0.16"}]'
   )
   testthat::local_mocked_bindings(
@@ -245,6 +303,7 @@ test_that("value-limit responses produce an actionable structured error", {
 })
 
 test_that("value-limit detection is strict and uses the complete body", {
+  testthat::local_mocked_bindings(.sidra_retry_sleep = function(...) NULL)
   long_body <- paste0(
     strrep("temporary upstream detail ", 25L),
     " QUANTIDADE   DE VALORES SOLICITADOS: 3000000000\n",
@@ -307,6 +366,7 @@ test_that("value-limit detection is strict and uses the complete body", {
 })
 
 test_that("transport failures have structured fields and conservative classes", {
+  testthat::local_mocked_bindings(.sidra_retry_sleep = function(...) NULL)
   url <- "https://apisidra.ibge.gov.br/values/t/1"
   current_error <- NULL
   testthat::local_mocked_bindings(
@@ -380,7 +440,8 @@ test_that("empty-response failures use package parse error classes", {
 })
 
 test_that("invalid request options fall back to safe defaults", {
-  seen_times <- NULL
+  seen_times <- integer()
+  testthat::local_mocked_bindings(.sidra_retry_sleep = function(...) NULL)
   old_options <- options(
     sidrar.timeout = Inf,
     sidrar.retries = 3e9
@@ -389,8 +450,8 @@ test_that("invalid request options fall back to safe defaults", {
 
   testthat::local_mocked_bindings(
     RETRY = function(..., times) {
-      seen_times <<- times
-      fake_http_response()
+      seen_times <<- c(seen_times, times)
+      fake_http_response(status = if (length(seen_times) < 3L) 503L else 200L)
     },
     .package = "httr"
   )
@@ -398,5 +459,5 @@ test_that("invalid request options fall back to safe defaults", {
   sidrar:::.sidra_request(
     "https://apisidra.ibge.gov.br/values/t/1"
   )
-  expect_identical(seen_times, 3L)
+  expect_identical(seen_times, rep(1L, 3L))
 })

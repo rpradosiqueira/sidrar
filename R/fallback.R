@@ -50,15 +50,7 @@
     )))
   }
   dimensions <- keys[grepl("^[nc][0-9]+$", keys) | keys %in% c("p", "v")]
-  ranks <- ifelse(
-    grepl("^n", dimensions), 1L,
-    ifelse(dimensions == "p", 2L, ifelse(dimensions == "v", 3L, 4L))
-  )
-  if (any(diff(ranks) < 0L)) {
-    return(unavailable(
-      "dimension order must be territory, period, variable, then classifications"
-    ))
-  }
+  dimensions <- unique(sub("^n[0-9]+$", "n", dimensions))
   value <- function(key, default) {
     if (key %in% keys) values[[key]] else default
   }
@@ -66,42 +58,50 @@
   if (!grepl("^[0-9]+$", value("t", ""))) {
     return(unavailable("the table code must be numeric"))
   }
-  if (!identical(tolower(value("f", "a")), "a") ||
-        !identical(tolower(value("d", "s")), "s") ||
-        !tolower(value("h", "y")) %in% c("y", "n")) {
+  format <- tolower(value("f", "a"))
+  digits <- tolower(value("d", "s"))
+  precision <- .sidra_fallback_precision(digits)
+  if (!identical(format, "a") ||
+        is.null(precision) || !tolower(value("h", "y")) %in% c("y", "n")) {
     return(unavailable(
-      "custom format, decimal precision, or header options cannot be translated safely"
+      "unsupported format, decimal precision, or header option"
     ))
   }
 
   geo_key <- keys[grepl("^n[0-9]+$", keys)]
-  if (length(geo_key) != 1L) {
-    return(unavailable("exactly one explicit territorial level is required"))
+  if (length(geo_key) == 0L) {
+    return(unavailable("at least one explicit territorial level is required"))
   }
-  geo <- tolower(values[[geo_key]])
-  if (code_list(geo) || identical(geo, "all")) {
-    locality <- paste0(toupper(geo_key), "[", geo, "]")
-  } else {
-    match <- regexec("^in (n[0-9]+) ([0-9]+(?:,[0-9]+)*)$", geo, perl = TRUE)
-    parts <- regmatches(geo, match)[[1L]]
-    if (length(parts) != 3L) {
-      return(unavailable("the territorial selection cannot be translated safely"))
+  locality <- character(length(geo_key))
+  for (i in seq_along(geo_key)) {
+    geo <- tolower(values[[geo_key[[i]]]])
+    if (code_list(geo) || identical(geo, "all")) {
+      locality[[i]] <- paste0(toupper(geo_key[[i]]), "[", geo, "]")
+    } else {
+      match <- regexec("^in (n[0-9]+) ([0-9]+(?:,[0-9]+)*)$", geo, perl = TRUE)
+      parts <- regmatches(geo, match)[[1L]]
+      if (length(parts) != 3L) {
+        return(unavailable("the territorial selection cannot be translated safely"))
+      }
+      locality[[i]] <- paste0(
+        toupper(geo_key[[i]]), "[", toupper(parts[[2L]]), "[", parts[[3L]], "]]"
+      )
     }
-    locality <- paste0(
-      toupper(geo_key), "[", toupper(parts[[2L]]), "[", parts[[3L]], "]]"
-    )
   }
 
   period <- tolower(value("p", "last"))
-  if (code_list(period)) {
+  if (grepl("^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$", period)) {
     period <- gsub(",", "|", period, fixed = TRUE)
   } else if (identical(period, "last")) {
     period <- "-1"
   } else if (grepl("^last [1-9][0-9]*$", period)) {
     period <- paste0("-", sub("^last ", "", period))
-  } else {
-    return(unavailable("only explicit periods and last-period selections are supported"))
+  } else if (!(period %in% c("all", "first") ||
+               grepl("^first [1-9][0-9]*$", period))) {
+    return(unavailable("the period selection cannot be translated safely"))
   }
+  # Native all/first selectors remain intact: never replace a complete series
+  # with a fixed number of recent observations.
 
   variable <- tolower(value("v", "allxp"))
   if (!code_list(variable) && !variable %in% c("all", "allxp")) {
@@ -121,7 +121,7 @@
     )
   }
 
-  query <- list(localidades = locality)
+  query <- list(localidades = paste(locality, collapse = "|"))
   if (length(classes) > 0L) {
     query$classificacao <- paste(classes, collapse = "|")
   }
@@ -131,7 +131,11 @@
     "/periodos/", utils::URLencode(period, reserved = TRUE),
     "/variaveis/", utils::URLencode(variable, reserved = TRUE)
   )
-  list(url = httr::modify_url(alternative, query = query), reason = NULL)
+  list(
+    url = httr::modify_url(alternative, query = query), reason = NULL,
+    dimensions = dimensions, classes = class_keys, format = format,
+    precision = precision, selections = values
+  )
 }
 
 .sidra_values_request <- function(url) {
@@ -177,7 +181,9 @@
       )
     }
     .parse_sidra_values(result, header = TRUE, value_type = "character")
-    result
+    formatted <- .sidra_fallback_format(result, parsed, alternative)
+    .sidra_fallback_validate_selection(parsed, alternative)
+    formatted
   }, error = function(e) {
     e$primary_error <- primary
     e$message <- paste0(

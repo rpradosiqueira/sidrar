@@ -1,8 +1,13 @@
 fallback_values_json <- function() {
   paste0(
     '[{"NC":"Nível Territorial (Código)","NN":"Nível Territorial",',
-    '"MC":"Unidade de Medida (Código)","MN":"Unidade de Medida","V":"Valor"},',
-    '{"NC":"1","NN":"Brasil","MC":"2","MN":"%","V":"0.16"}]'
+    '"MC":"Unidade de Medida (Código)","MN":"Unidade de Medida","V":"Valor",',
+    '"D1C":"Brasil (Código)","D1N":"Brasil",',
+    '"D2C":"Mês (Código)","D2N":"Mês",',
+    '"D3C":"Variável (Código)","D3N":"Variável"},',
+    '{"NC":"1","NN":"Brasil","MC":"2","MN":"%","V":"0.16",',
+    '"D1C":"1","D1N":"Brasil","D2C":"202601","D2N":"janeiro 2026",',
+    '"D3C":"63","D3N":"Variação mensal"}]'
   )
 }
 
@@ -52,6 +57,175 @@ test_that("translation retains list order, identifiers and nested geography", {
   )
 })
 
+test_that("all, first and interval periods retain their complete selections", {
+  selectors <- c(
+    "all", "first", "first%205", "2020-2022", "2018,2020-2022,2024",
+    "last", "last%2012"
+  )
+  expected <- c(
+    "all", "first", "first 5", "2020-2022", "2018|2020-2022|2024",
+    "-1", "-12"
+  )
+  for (i in seq_along(selectors)) {
+    result <- sidrar:::.sidra_fallback_url(paste0(
+      "https://apisidra.ibge.gov.br/values/t/1/n1/all/v/63/p/",
+      selectors[[i]]
+    ))
+    expect_null(result$reason, info = selectors[[i]])
+    expect_identical(
+      utils::URLdecode(httr::parse_url(result$url)$path),
+      paste0("api/v3/agregados/1/periodos/", expected[[i]], "/variaveis/63"),
+      info = selectors[[i]]
+    )
+    expect_identical(result$dimensions, c("n", "v", "p"))
+  }
+})
+
+test_that("multiple geographic levels and dimension order are retained", {
+  cases <- list(
+    list(
+      path = "t/1/n1/all/n2/all/n3/all/v/63/p/all",
+      dimensions = c("n", "v", "p"),
+      locality = "N1[all]|N2[all]|N3[all]",
+      classification = NULL
+    ),
+    list(
+      path = paste0(
+        "t/1/p/all/n6/in%20n3%2031,50/n1/all/v/63/",
+        "c82/all/n3/01,02/c81/2702,2701"
+      ),
+      dimensions = c("p", "n", "v", "c82", "c81"),
+      locality = "N6[N3[31,50]]|N1[all]|N3[01,02]",
+      classification = "82[all]|81[2702,2701]"
+    ),
+    list(
+      path = "t/1/c81/2702,2701/v/63/p/all/n3/31/n1/all",
+      dimensions = c("c81", "v", "p", "n"),
+      locality = "N3[31]|N1[all]",
+      classification = "81[2702,2701]"
+    )
+  )
+  for (case in cases) {
+    result <- sidrar:::.sidra_fallback_url(paste0(
+      "https://apisidra.ibge.gov.br/values/", case$path
+    ))
+    expect_null(result$reason, info = case$path)
+    expect_identical(result$dimensions, case$dimensions, info = case$path)
+    parsed <- httr::parse_url(result$url)
+    expect_identical(parsed$query$localidades, case$locality, info = case$path)
+    expect_identical(
+      parsed$query$classificacao, case$classification, info = case$path
+    )
+    expect_identical(parsed$query$view, "flat")
+  }
+})
+
+test_that("global and variable-specific precision are retained for formatting", {
+  cases <- list(
+    list(
+      selection = "s",
+      expected = list(mode = "default", digits = NULL, variable = NULL)
+    ),
+    list(
+      selection = "2",
+      expected = list(mode = "global", digits = 2L, variable = NULL)
+    ),
+    list(
+      selection = "v4099%201",
+      expected = list(mode = "variable", digits = 1L, variable = "4099")
+    )
+  )
+  for (case in cases) {
+    result <- sidrar:::.sidra_fallback_url(paste0(
+      "https://apisidra.ibge.gov.br/values/t/6468/n3/all/v/4099/p/all/d/",
+      case$selection
+    ))
+    expect_null(result$reason, info = case$selection)
+    expect_identical(result$precision, case$expected, info = case$selection)
+    expect_identical(
+      httr::parse_url(result$url)$path,
+      "api/v3/agregados/6468/periodos/all/variaveis/4099"
+    )
+  }
+})
+
+test_that("all ten reported PNAD queries preserve their complete selections", {
+  paths <- c(
+    "/t/6469/n1/all/n2/all/n3/all/v/5935/p/all",
+    "/t/6472/n1/all/n2/all/n3/all/v/5933/p/all",
+    "/t/6468/n1/all/n2/all/n3/all/v/4099/p/all/d/v4099%201",
+    "/t/6461/n1/all/n2/all/n3/all/v/4096/p/all/d/v4096%201",
+    "/t/4099/n1/all/n2/all/n3/all/v/4118/p/all/d/v4118%201",
+    "/t/8529/n1/all/n2/all/n3/all/v/12466/p/all/d/v12466%201",
+    "/t/6385/n1/all/n2/all/n3/all/v/4108/p/all/c12043/31656/d/v4108%201",
+    paste0(
+      "/t/1616/n1/all/n2/all/n3/all/v/4110/p/all/",
+      "c1965/31829,101227/d/v4110%201"
+    ),
+    paste0(
+      "/t/5440/n1/all/n2/all/n3/all/v/5932,5934/p/all/",
+      "c11913/31722,31723,31725,31726,31727,96165,96170,96171"
+    ),
+    paste0(
+      "/t/4097/n1/all/n2/all/n3/all/v/4108/p/all/",
+      "c11913/31722,31723,31725,31726,31727,96170,96171/d/v4108%201"
+    )
+  )
+  tables <- c(
+    "6469", "6472", "6468", "6461", "4099", "8529", "6385", "1616",
+    "5440", "4097"
+  )
+  variables <- c(
+    "5935", "5933", "4099", "4096", "4118", "12466", "4108", "4110",
+    "5932|5934", "4108"
+  )
+  classifications <- list(
+    NULL, NULL, NULL, NULL, NULL, NULL,
+    "12043[31656]", "1965[31829,101227]",
+    "11913[31722,31723,31725,31726,31727,96165,96170,96171]",
+    "11913[31722,31723,31725,31726,31727,96170,96171]"
+  )
+  class_keys <- list(
+    character(), character(), character(), character(), character(),
+    character(), "c12043", "c1965", "c11913", "c11913"
+  )
+  precision_variables <- c(
+    NA_character_, NA_character_, "4099", "4096", "4118", "12466",
+    "4108", "4110", NA_character_, "4108"
+  )
+  for (i in seq_along(paths)) {
+    result <- sidrar:::.sidra_fallback_url(paste0(
+      "https://apisidra.ibge.gov.br/values", paths[[i]]
+    ))
+    expect_null(result$reason, info = paths[[i]])
+    parsed <- httr::parse_url(result$url)
+    expect_identical(parsed$hostname, "servicodados.ibge.gov.br")
+    expect_identical(
+      utils::URLdecode(parsed$path),
+      paste0(
+        "api/v3/agregados/", tables[[i]], "/periodos/all/variaveis/",
+        variables[[i]]
+      ),
+      info = paths[[i]]
+    )
+    expect_identical(parsed$query$localidades, "N1[all]|N2[all]|N3[all]")
+    expect_identical(
+      parsed$query$classificacao, classifications[[i]], info = paths[[i]]
+    )
+    expect_identical(parsed$query$view, "flat")
+    expect_identical(result$classes, class_keys[[i]], info = paths[[i]])
+    expect_identical(
+      result$dimensions, c("n", "v", "p", class_keys[[i]]), info = paths[[i]]
+    )
+    expected_precision <- if (is.na(precision_variables[[i]])) {
+      list(mode = "default", digits = NULL, variable = NULL)
+    } else {
+      list(mode = "variable", digits = 1L, variable = precision_variables[[i]])
+    }
+    expect_identical(result$precision, expected_precision, info = paths[[i]])
+  }
+})
+
 test_that("period and variable selections are required for partial URLs", {
   for (path in c("t/1/n1/all", "t/1/n1/all/p/last", "t/1/n1/all/v/allxp")) {
     result <- sidrar:::.sidra_fallback_url(paste0(
@@ -73,25 +247,24 @@ test_that("period and variable selections are required for partial URLs", {
 test_that("unsupported semantics never produce a lossy alternative URL", {
   paths <- c(
     "t/1/p/last/v/allxp", "t/x/n1/1/p/last/v/allxp",
-    "t/1/n1/1/n3/31/p/last/v/allxp", "t/1/n1/1/p/last/v/allxp/g/1",
+    "t/1/n1/1/p/last/v/allxp/g/1",
     "t/1/n1/1/p/last/v/allxp/u/y", "t/1/n1/1/p/last/v/allxp/u/n",
     "t/1/n1/1/p/last/v/allxp/o/p", "t/1/n1/1/p/last/v/allxp/z/1",
-    "t/1/n1/1/p/first/v/allxp", "t/1/n1/1/p/first%205/v/allxp",
-    "t/1/n1/1/p/all/v/allxp", "t/1/n1/1/p/2020-2022/v/allxp",
+    "t/1/n1/1/p/first%200/v/allxp", "t/1/n1/1/p/2020-/v/allxp",
+    "t/1/n1/1/p/2020--2022/v/allxp", "t/1/n1/1/p/all,2020/v/allxp",
     "t/1/n1/1/p/last%200/v/allxp", "t/1/n1/1/p/2020+2021/v/allxp",
     "t/1/n1/1/p/last/v/allxt", "t/1/n1/1/p/last/v/1+2",
     "t/1/n1/1/p/last/v/all,1", "t/1/n1/1/p/last/v/allxp/c1/allxt",
     "t/1/n1/1/p/last/v/allxp/c1/1+2", "t/1/n1/1/p/last/v/allxp/c1/1-2",
     "t/1/n1/1/p/last/v/allxp/f/c", "t/1/n1/1/p/last/v/allxp/f/n",
     "t/1/n1/1/p/last/v/allxp/f/u", "t/1/n1/1/p/last/v/allxp/d/m",
-    "t/1/n1/1/p/last/v/allxp/d/2", "t/1/n1/1/p/last/v/allxp/h/x",
+    "t/1/n1/1/p/last/v/allxp/d/1.5", "t/1/n1/1/p/last/v/allxp/h/x",
     "t/1/n6/in%20n3%20all/p/last/v/allxp",
     "t/1/n6/in%20n3%2031%20in%20n2%202/p/last/v/allxp",
     "t/1/n1/1/p/2020/p/2021/v/allxp", "t/1/n1/1/t/2/p/last/v/allxp",
     "t/1/n1/1/n1/all/p/last/v/allxp", "t/1/n1/1/p/last/v/allxp/c1/1/c1/2",
     "t/1/n1/1/p/last/v/allxp/h", "t/1/n1/1/p/last/v/allxp/",
-    "t/1/n1//p/2020/v/allxp", "t/1/n1/1/v/1/p/2020",
-    "t/1/p/2020/n1/1/v/allxp", "t/1/n1/1/p/2020/c1/all/v/1"
+    "t/1/n1//p/2020/v/allxp"
   )
   for (path in paths) {
     result <- sidrar:::.sidra_fallback_url(paste0(
@@ -224,7 +397,7 @@ test_that("disabled and ineligible fallback preserve the primary challenge", {
 
   options(sidrar.fallback = TRUE)
   for (url in c(
-    "https://apisidra.ibge.gov.br/values/t/1/n1/1/p/last/v/allxp/d/2",
+    "https://apisidra.ibge.gov.br/values/t/1/n1/1/p/last/v/allxp/g/1",
     "https://apisidra.ibge.gov.br/DescritoresTabela/t/1"
   )) {
     result <- tryCatch(sidrar:::.sidra_values_request(url), error = identity)

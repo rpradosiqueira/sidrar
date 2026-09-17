@@ -212,16 +212,117 @@
     ignore.case = TRUE,
     perl = TRUE
   )
-  html_root && grepl(
+  if (!html_root) {
+    return(FALSE)
+  }
+
+  explicit_marker <- grepl(
     "/cdn-cgi/challenge-platform/|\\b_cf_chl_opt\\b",
     body,
     perl = TRUE
   )
+  if (explicit_marker) {
+    return(TRUE)
+  }
+
+  # Some challenge pages expose only their title and CSP/script host. Neither
+  # a generic Cloudflare error page nor a Turnstile script alone is sufficient.
+  challenge_title <- grepl(
+    paste0(
+      "<title(?:\\s[^>]*)?>\\s*",
+      "(?:just\\s+a\\s+moment|checking\\s+your\\s+browser)",
+      "[.\u2026\\s]*</title\\s*>"
+    ),
+    body,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  challenge_host <- grepl(
+    paste0(
+      "(?:https?:)?//challenges\\.cloudflare\\.com",
+      "(?=[/?#\\s\\\"'<>;]|$)"
+    ),
+    body,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+
+  challenge_title && challenge_host
+}
+
+.sidra_retry_now <- function() {
+  Sys.time()
+}
+
+.sidra_retry_header <- function(response, name) {
+  headers <- httr::headers(response)
+  index <- which(tolower(names(headers)) == tolower(name))
+  if (length(index) != 1L) {
+    return("")
+  }
+  value <- headers[[index]]
+  if (!is.character(value) || length(value) != 1L || is.na(value)) {
+    return("")
+  }
+  trimws(value)
+}
+
+.sidra_retry_date <- function(value) {
+  # Restrict the parser to HTTP-date syntax: parse_http_date() also accepts
+  # trailing text. Its implementation sets the C locale while parsing.
+  weekday <- "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)"
+  month <- "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+  clock <- "[0-9]{2}:[0-9]{2}:[0-9]{2}"
+  formats <- c(
+    paste0("^", weekday, ", [0-9]{2} ", month, " [0-9]{4} ", clock, " GMT$"),
+    paste0(
+      "^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ",
+      "[0-9]{2}-", month, "-[0-9]{2} ", clock, " GMT$"
+    ),
+    paste0("^", weekday, " ", month, " [ 0-9][0-9] ", clock, " [0-9]{4}$")
+  )
+  if (!any(vapply(formats, grepl, logical(1), x = value, perl = TRUE))) {
+    return(NA_real_)
+  }
+  suppressWarnings(as.numeric(httr::parse_http_date(value)))
+}
+
+.sidra_retry_after <- function(response, now = .sidra_retry_now()) {
+  value <- .sidra_retry_header(response, "retry-after")
+  if (!nzchar(value)) {
+    return(NA_real_)
+  }
+  if (grepl("^[0-9]+$", value)) {
+    # Overflow remains Inf and is handled as an excessive wait, never as an
+    # invalid header that would permit another request after a short backoff.
+    return(suppressWarnings(as.numeric(value)))
+  }
+
+  date <- .sidra_retry_date(value)
+  if (!is.finite(date)) {
+    return(NA_real_)
+  }
+  delay <- date - as.numeric(now)
+  server_date <- .sidra_retry_date(.sidra_retry_header(response, "date"))
+  if (is.finite(server_date)) {
+    # A local clock ahead of the server must not cause an early retry.
+    delay <- max(delay, date - server_date)
+  }
+  max(0, delay)
+}
+
+.sidra_retry_pause <- function(attempt) {
+  max(0.5, stats::runif(1L, max = min(4, 0.5 * 2^attempt)))
+}
+
+.sidra_retry_sleep <- function(seconds) {
+  Sys.sleep(seconds)
 }
 
 .sidra_request <- function(url) {
   timeout <- getOption("sidrar.timeout", 60)
   retries <- getOption("sidrar.retries", 3L)
+  retry_after_max <- getOption("sidrar.retry_after_max", 60)
 
   if (length(timeout) != 1L || is.na(timeout) ||
         !is.numeric(timeout) || !is.finite(timeout) || timeout <= 0) {
@@ -232,37 +333,88 @@
         retries != floor(retries) || retries > .Machine$integer.max) {
     retries <- 3L
   }
+  if (!is.numeric(retry_after_max) || length(retry_after_max) != 1L ||
+        is.na(retry_after_max) || !is.finite(retry_after_max) ||
+        retry_after_max <= 0) {
+    retry_after_max <- 60
+  }
+  retry_after_max <- as.double(retry_after_max)
 
-  response <- tryCatch(
-    httr::RETRY(
-      "GET",
-      url,
-      httr::accept_json(),
-      httr::user_agent(.sidrar_user_agent()),
-      httr::timeout(timeout),
-      times = as.integer(retries),
-      pause_base = 0.5,
-      pause_min = 0.5,
-      pause_cap = 4,
-      quiet = TRUE,
-      terminate_on = setdiff(400:499, c(408, 425, 429))
-    ),
-    error = function(e) {
+  retry_after <- NA_real_
+  for (attempt in seq_len(as.integer(retries))) {
+    # httr 1.4.x only honors Retry-After when quiet = FALSE, and only for 429.
+    # Single attempts let us remain silent and safely handle both HTTP-date
+    # and delay-seconds without changing httr internals or TLS configuration.
+    response <- tryCatch(
+      httr::RETRY(
+        "GET",
+        url,
+        httr::accept_json(),
+        httr::user_agent(.sidrar_user_agent()),
+        httr::timeout(timeout),
+        times = 1L,
+        quiet = TRUE
+      ),
+      error = identity
+    )
+    if (inherits(response, "error")) {
+      if (attempt >= retries) {
+        .sidrar_abort(
+          paste0("SIDRA request failed: ", conditionMessage(response)),
+          c(.sidra_transport_classes(response), "sidrar_http_error"),
+          status_code = NA_integer_,
+          response_body = "",
+          url = url
+        )
+      }
+      .sidra_retry_sleep(.sidra_retry_pause(attempt))
+      next
+    }
+
+    body <- tryCatch(
+      httr::content(response, as = "text", encoding = "UTF-8"),
+      error = function(e) ""
+    )
+    status <- httr::status_code(response)
+    retry_after <- .sidra_retry_after(response)
+    if (.sidra_is_challenge(response, body) ||
+          !httr::http_error(response) ||
+          status %in% setdiff(400:499, c(408, 425, 429)) ||
+          attempt >= retries) {
+      break
+    }
+
+    # Respect the configured upper bound for a server-requested delay.
+    # Abort instead of capping the sleep, which would retry too early.
+    if (!is.na(retry_after) && retry_after > retry_after_max) {
       .sidrar_abort(
-        paste0("SIDRA request failed: ", conditionMessage(e)),
-        c(.sidra_transport_classes(e), "sidrar_http_error"),
-        status_code = NA_integer_,
-        response_body = "",
-        url = url
+        sprintf(
+          paste0(
+            "SIDRA API request failed (HTTP %s): Retry-After requests ",
+            "%s seconds, exceeding the %s-second automatic wait limit ",
+            "(option 'sidrar.retry_after_max'). ",
+            "No further request was sent; try again after that interval."
+          ),
+          status,
+          format(retry_after, scientific = FALSE, trim = TRUE),
+          format(retry_after_max, scientific = FALSE, trim = TRUE)
+        ),
+        c("sidrar_retry_after_error", "sidrar_http_error"),
+        status_code = status,
+        response_body = body,
+        url = url,
+        retry_after = retry_after,
+        retry_after_max = retry_after_max,
+        retry_after_header = .sidra_retry_header(response, "retry-after"),
+        attempts = attempt
       )
     }
-  )
-
-  body <- tryCatch(
-    httr::content(response, as = "text", encoding = "UTF-8"),
-    error = function(e) ""
-  )
-  status <- httr::status_code(response)
+    delay <- .sidra_retry_pause(attempt)
+    if (!is.na(retry_after)) {
+      delay <- max(delay, retry_after)
+    }
+    .sidra_retry_sleep(delay)
+  }
 
   if (.sidra_is_challenge(response, body)) {
     cf_ray <- .sidra_response_header(response, "cf-ray")
@@ -337,7 +489,10 @@
       "sidrar_http_error",
       status_code = status,
       response_body = body,
-      url = url
+      url = url,
+      retry_after = if (is.na(retry_after)) NULL else retry_after,
+      retry_after_header = .sidra_retry_header(response, "retry-after"),
+      attempts = attempt
     )
   }
 

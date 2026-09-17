@@ -92,6 +92,15 @@ Requests use HTTPS, UTF-8 decoding, a timeout, and limited retries for
 transient failures. Set \code{options(sidrar.timeout = 120)} or
 \code{options(sidrar.retries = 4)} to override their defaults. Responses are
 requested live and are not cached by the package.
+HTTP 429 and 503 responses honor a valid \code{Retry-After} delay (seconds or
+HTTP date). Set \code{options(sidrar.retry_after_max = 120)} to change the maximum
+server-requested delay accepted for another attempt (default: 60 seconds).
+The option must be one finite positive number; invalid settings use 60.
+If the requested delay exceeds that limit,
+a \code{sidrar_retry_after_error} (also a \code{sidrar_http_error}) carries
+\code{retry_after} and \code{retry_after_max}, rather than retrying before the server
+permits it. This limit does not change the per-attempt timeout or the total
+number of attempts.
 
 HTTP conditions inherit from \code{sidrar_http_error} and carry \code{status_code},
 \code{response_body}, and \code{url}. Transport failures may additionally inherit
@@ -102,16 +111,35 @@ failure can be identified conservatively.
 Cloudflare browser challenges raise \code{sidrar_challenge_error}, which
 inherits from \code{sidrar_http_error} and also carries \code{cf_ray} when available.
 For compatible values queries, the package retries through IBGE's official
-aggregate API v3 with \code{view=flat}. This fallback supports one geographic
-level, explicit or latest periods, standard variable/category selections,
-and the default format and precision. Unsupported selections retain the
+aggregate API v3 with \code{view=flat}. This fallback supports multiple geographic
+levels, explicit periods and ranges, \code{all}, \code{first}, and \code{last} selections,
+standard variable/category selections, and the default descriptor format.
+Dimension columns follow the original URL, including when variable precedes
+period; observation order remains that returned by the alternative service.
+Explicit decimal precision is accepted only when numeric values already have
+the requested decimal places. Otherwise \code{sidrar_fallback_precision_error}
+(also a \code{sidrar_parse_error}) is raised: the alternative cannot reconstruct
+unavailable precision, and values are not rounded or padded. The default
+precision preserves values as received; maximum precision is unsupported.
+Unsupported selections retain the
 original challenge error with a \code{fallback_reason} field. Set
 \code{options(sidrar.fallback = FALSE)} to disable this alternative route.
 If the alternative request fails, its error carries \code{primary_error} with
 the original challenge. Availability still depends on IBGE; increasing
 retries does not solve a browser challenge.
-Automatic classification discovery (\code{classific = "all"}) still requires
-access to SIDRA's table descriptor before requesting values.
+Automatic classification discovery (\code{classific = "all"}) can use official
+aggregate metadata if SIDRA's table descriptor returns a browser challenge.
+
+Alternative responses are checked for complete dimension fields, textual
+identifiers, duplicate observation keys, and membership in explicit filters.
+Violations raise \code{sidrar_parse_error} subclasses and retain \code{primary_error}.
+Missing explicitly selected members produce \code{sidrar_incomplete_warning},
+whose \code{missing} field identifies them, without adding or removing rows.
+This warning does not prove truncation: sparse tables can legitimately omit
+observations. No Cartesian product is required. Full coverage of \code{all},
+the exact membership of first/latest selections, and containing-level
+geographic filters require catalog or territorial metadata comparisons and
+are not inferred by these local checks.
 
 When SIDRA rejects a query for exceeding its per-request value limit,
 \code{get_sidra()} raises a \code{sidrar_limit_error}, which also inherits from

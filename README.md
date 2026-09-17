@@ -155,34 +155,86 @@ options(
 Regular package tests are offline. Live API smoke tests run separately
 on a small set of queries to detect availability and schema changes.
 
+HTTP 429 and 503 responses honor `Retry-After` in seconds or HTTP-date
+form, even when retry logging is quiet. The maximum accepted
+server-requested delay defaults to 60 seconds and is configurable for
+all package requests:
+
+``` r
+options(sidrar.retry_after_max = 120) # Accept server delays up to two minutes
+options(sidrar.retry_after_max = NULL) # Restore the default of 60 seconds
+```
+
+Use one finite positive number of seconds; invalid settings fall back to
+60. If the server requests more than this limit,
+`sidrar_retry_after_error` carries the original HTTP details,
+`retry_after`, and `retry_after_max`, instead of retrying early. Wait
+until the permitted time before trying again. This option does not
+change `sidrar.timeout` or `sidrar.retries`.
+
 ### Cloudflare access challenges
 
 Some SIDRA values requests have returned a Cloudflare browser challenge
 (`HTTP 403`, `Just a moment...`) since reports dated September 15, 2026.
 This is an access restriction upstream, rather than a malformed query.
 
-Version 0.5.1 recognizes this response and, for compatible queries, uses
+The package recognizes this response and, for compatible queries, uses
 the official IBGE aggregate API v3 with `view=flat`. Existing calls to
 `get_sidra()` and `sidra_collect()` can use this fallback without
-changing their arguments. It supports one geographic level (including a
-containing level filter), explicit periods or `last`, explicit
-variable/category codes or `all`/`allxp` as appropriate, and the default
-format and precision. Header handling and `value_type` remain unchanged.
-A message identifies when the alternative endpoint is used.
+changing their arguments. The development version extends the fallback
+introduced in 0.5.1 to multiple geographic levels (including
+containing-level filters), explicit periods and ranges, `all`, `first`,
+`first N`, `last`, and `last N`. Explicit variable/category codes or
+`all`/`allxp` are supported as appropriate, with the default descriptor
+format. Header handling and `value_type` remain unchanged. A message
+identifies when the alternative endpoint is used.
 
-When `classific = "all"` discovers classifications automatically,
-SIDRA’s descriptor endpoint must also be accessible before values can be
-requested.
+For example, the complete PNAD quarterly series for Brazil, regions, and
+states can be requested without changing the original API path:
 
-Territorial views, extinct-unit options, multiple geographic levels,
-`first` or `all` periods, ranges, category sums, custom
-format/precision, and other unsupported URL options are not translated
-automatically. The original `sidrar_challenge_error` then explains the
-limitation in `fallback_reason`. For URLs supplied through `api`,
-dimensions must follow the standard geography, period, variable,
-classification order used by `sidra_query()`, with period and variable
-specified explicitly. You can disable fallback with
-`options(sidrar.fallback = FALSE)`.
+``` r
+pnad <- get_sidra(
+  api = "/t/6468/n1/all/n2/all/n3/all/v/4099/p/all/d/v4099%201",
+  value_type = "both"
+)
+```
+
+Dimension columns follow the order in the original URL, including
+variable before period. Observation order remains that returned by the
+alternative service; sort explicitly when an analysis depends on row
+order. When automatic classification discovery (`classific = "all"`)
+encounters a descriptor challenge, it can also use official aggregate
+metadata.
+
+Explicit precision (`/d/1` or a single variable-specific `/d/v4099 1`,
+with the space URL-encoded) is accepted only when returned numeric
+values already have the requested decimal places. Otherwise a
+`sidrar_fallback_precision_error` is raised; the alternative service
+does not expose all stored digits. Values are neither rounded again nor
+padded to imply unavailable precision. Default precision preserves the
+received values.
+
+Territorial views, extinct-unit options, category sums, non-default
+descriptor formats, maximum precision (`digits = "max"`), and other
+unsupported URL options are not translated automatically. The original
+`sidrar_challenge_error` then explains the limitation in
+`fallback_reason`. For URLs supplied through `api`, period, variable,
+and at least one territorial level must be specified explicitly. You can
+disable fallback with `options(sidrar.fallback = FALSE)`.
+
+The alternative response is always checked for complete dimension
+fields, textual identifiers, duplicate observation keys, and codes
+outside explicit filters. Unexpected codes or duplicate keys are errors;
+rows are never silently filtered or deduplicated. Missing explicitly
+requested members instead emit `sidrar_incomplete_warning`, with details
+in its `missing` field. This may mean unavailable data rather than
+truncation: sparse tables need not contain every possible combination,
+and missing cells are not filled with zero.
+
+These local checks do not establish full coverage of `all`, exact
+membership of `first`/`last`, or containing-level geography filters.
+Those comparisons require current catalog or territorial metadata. The
+checks add no metadata requests of their own.
 
 If both official endpoints are unavailable, the package cannot restore
 access itself. Report the failing URL, access time, and `cf_ray` from

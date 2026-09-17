@@ -266,12 +266,44 @@ Use `refresh = TRUE` to bypass and replace a cached discovery entry.
 Cloudflare browser challenges are identified as `sidrar_challenge_error`.
 For compatible values queries, `get_sidra()` and `sidra_collect()` can use
 IBGE's official aggregate API v3 as an alternative endpoint. This fallback
-supports one geographic level, explicit or latest periods, standard
-variable/category selections, and the default format and precision. It
+supports multiple geographic levels, explicit periods and ranges, complete
+or first/latest period selections, standard variable/category selections,
+and the default descriptor format. Dimension columns follow the original URL;
+observation order remains that returned by the alternative service. It
 preserves the requested headers and special-value handling, and announces
 when the alternative is used. Set `options(sidrar.fallback = FALSE)` to
 disable it. Unsupported selections retain the original challenge error with
 an explanation in `fallback_reason`.
+
+Explicit decimal precision is accepted only when numeric values already have
+the requested decimal places. Otherwise `sidrar_fallback_precision_error`
+(also a `sidrar_parse_error`) prevents silent re-rounding or invented digits.
+Default precision preserves the received values; maximum precision is not
+supported by this alternative. Automatic classification discovery can use
+official aggregate metadata when the SIDRA descriptor returns a challenge.
+
+Every fallback response is checked for complete dimension fields, textual
+identifiers, duplicate observation keys, and codes outside explicit filters.
+Missing explicitly requested members generate `sidrar_incomplete_warning`,
+not fabricated rows or zeros: legitimate sparse tables need not form a full
+Cartesian product. Full coverage of `all` and contextual geographic membership
+still require comparison with current metadata.
+
+For HTTP 429 or 503, the client honors a valid `Retry-After` header, including
+HTTP dates. The default maximum accepted server delay is 60 seconds; set
+`options(sidrar.retry_after_max = 120)` to allow up to two minutes. The value
+must be one finite positive number of seconds; invalid settings use 60, and
+`options(sidrar.retry_after_max = NULL)` restores that default. If another
+attempt would exceed this limit, `sidrar_retry_after_error` carries the delay
+in `retry_after` and the configured limit in `retry_after_max`; it does not
+trigger an early retry or change the per-attempt timeout.
+
+```{r, eval = FALSE}
+pnad <- get_sidra(
+  api = "/t/6468/n1/all/n2/all/n3/all/v/4099/p/all/d/v4099%201",
+  value_type = "both"
+)
+```
 
 Collection provenance records actual source endpoints in `urls` and the
 original queries in `requested_urls` when fallback occurs. If both official

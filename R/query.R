@@ -275,6 +275,83 @@
   )
 }
 
+.query_classifications <- function(table) {
+  descriptor <- tryCatch(
+    .fetch_descriptor(table),
+    sidrar_challenge_error = function(e) e
+  )
+  if (!inherits(descriptor, "sidrar_challenge_error")) {
+    return(.descriptor_classifications(descriptor))
+  }
+  if (!isTRUE(getOption("sidrar.fallback", TRUE))) {
+    stop(descriptor)
+  }
+
+  message(
+    "SIDRA's table descriptor returned a Cloudflare challenge; using ",
+    "IBGE's official aggregate metadata to discover classifications."
+  )
+  tryCatch({
+    table <- .discovery_validate_table(table)
+    url <- paste0(.sidra_catalog_url, "/", table, "/metadados")
+    metadata <- .sidra_parse_json(
+      .sidra_request(url), simplify = FALSE,
+      context = "alternative classification metadata"
+    )
+    valid_id <- function(x) {
+      is.atomic(x) && length(x) == 1L && !is.na(x) &&
+        grepl("^[0-9]+$", as.character(x))
+    }
+    if (!is.list(metadata) || !valid_id(metadata[["id", exact = TRUE]]) ||
+          !identical(
+            .discovery_canonical_digits(as.character(metadata[["id", exact = TRUE]])),
+            table
+          ) ||
+          !"classificacoes" %in% names(metadata) ||
+          !is.list(metadata$classificacoes)) {
+      .sidrar_abort(
+        "IBGE's alternative API returned invalid classification metadata",
+        "sidrar_parse_error", url = url
+      )
+    }
+
+    # Keep the source order, which determines SIDRA's classification columns.
+    # The public metadata normalizer sorts IDs and also requests periods.
+    classifications <- .discovery_records(metadata$classificacoes)
+    if (length(classifications) != length(metadata$classificacoes) &&
+          is.null(names(metadata$classificacoes))) {
+      .sidrar_abort(
+        "IBGE's alternative API returned invalid classification records",
+        "sidrar_parse_error", url = url
+      )
+    }
+    ids <- vapply(classifications, function(classification) {
+      id <- classification[["id", exact = TRUE]]
+      if (!valid_id(id)) {
+        .sidrar_abort(
+          "IBGE's alternative API returned an invalid classification identifier",
+          "sidrar_parse_error", url = url
+        )
+      }
+      as.character(id)
+    }, character(1))
+    if (anyDuplicated(.discovery_canonical_digits(ids))) {
+      .sidrar_abort(
+        "IBGE's alternative API returned duplicate classification identifiers",
+        "sidrar_parse_error", url = url
+      )
+    }
+    if (length(ids) == 0L) character() else paste0("c", ids)
+  }, error = function(e) {
+    e$primary_error <- descriptor
+    e$message <- paste0(
+      "IBGE's alternative classification metadata failed after a SIDRA ",
+      "Cloudflare challenge: ", conditionMessage(e)
+    )
+    stop(e)
+  })
+}
+
 .resolve_classification_path <- function(table, classific, category) {
   if (is.null(classific) || .is_all(classific)) {
     if (!is.null(category) && !.is_all(category)) {
@@ -284,8 +361,7 @@
       )
     }
 
-    descriptor <- .fetch_descriptor(table)
-    classific <- .descriptor_classifications(descriptor)
+    classific <- .query_classifications(table)
     return(.build_classification_path(classific, "all"))
   }
 
