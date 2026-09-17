@@ -17,6 +17,8 @@ fully offline.
 * Windows 11 x64 (build 26200), R 4.6.0 (2026-04-24 ucrt)
 * macbuilder, Apple M1, macOS Tahoe 26.6, R 4.6.1 Patched
   (2026-07-27 r90311)
+* win-builder, Windows Server 2022 x64 (build 20348), R Under development
+  (unstable) (2026-09-16 r90549 ucrt)
 
 ## R CMD check results
 
@@ -27,8 +29,9 @@ https://mac.R-project.org/macbuilder/results/1789671693-2ea5a02f7b9a0712/
 
 0 errors | 0 warnings | 0 notes
 
-The same tarball has been uploaded to win-builder R-devel; its result is
-pending and is not counted as a passed check here.
+The same tarball passed win-builder R-devel, including CRAN incoming checks
+and PDF/HTML manuals: 0 errors, 0 warnings, 0 notes.
+https://win-builder.r-project.org/FhE9jMW9Key9/
 
 The local package test suite passed 691 expectations, with no failures or
 warnings and seven opt-in live tests skipped. A separate bounded live check
