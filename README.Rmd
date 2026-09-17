@@ -166,6 +166,39 @@ options(
 Regular package tests are offline. Live API smoke tests run separately on a
 small set of queries to detect availability and schema changes.
 
+### Cloudflare access challenges
+
+Some SIDRA values requests have returned a Cloudflare browser challenge
+(`HTTP 403`, `Just a moment...`) since reports dated September 15, 2026.
+This is an access restriction upstream, rather than a malformed query.
+
+Version 0.5.1 recognizes this response and, for compatible queries,
+uses the official IBGE aggregate API v3 with `view=flat`. Existing calls to
+`get_sidra()` and `sidra_collect()` can use this fallback without changing
+their arguments. It supports one geographic level (including a containing
+level filter), explicit periods or `last`, explicit variable/category codes
+or `all`/`allxp` as appropriate, and the default format and precision.
+Header handling and `value_type` remain unchanged. A message identifies when
+the alternative endpoint is used.
+
+When `classific = "all"` discovers classifications automatically, SIDRA's
+descriptor endpoint must also be accessible before values can be requested.
+
+Territorial views, extinct-unit options, multiple geographic levels, `first`
+or `all` periods, ranges, category sums, custom format/precision, and other
+unsupported URL options are not translated automatically. The original
+`sidrar_challenge_error` then explains the limitation in `fallback_reason`.
+For URLs supplied through `api`, dimensions must follow the standard
+geography, period, variable, classification order used by `sidra_query()`,
+with period and variable specified explicitly.
+You can disable fallback with `options(sidrar.fallback = FALSE)`.
+
+If both official endpoints are unavailable, the package cannot restore access
+itself. Report the failing URL, access time, and `cf_ray` from the condition
+to IBGE. Increasing retries does not solve browser challenges. With
+`sidra_collect(..., provenance = TRUE)`, `urls` records the actual endpoints
+and `requested_urls` records the original queries when fallback occurs.
+
 ### Requests above the SIDRA value limit
 
 When SIDRA rejects a request because it exceeds the service's per-request

@@ -1,3 +1,17 @@
+# sidrar 0.5.1
+
+* Recognized Cloudflare browser challenges as `sidrar_challenge_error`,
+  preserving HTTP details and the Ray ID without printing challenge HTML (#29).
+* Added a fallback for compatible values queries to IBGE's official aggregate
+  API v3 when the SIDRA endpoint returns a browser challenge. The fallback
+  preserves header handling, identifiers, and special values, and can be
+  disabled with `options(sidrar.fallback = FALSE)`. Unsupported query options
+  retain an explicit error instead of changing the requested selection.
+* Collection provenance now records the actual source URLs and, when a
+  fallback was used, the original `requested_urls`.
+* Removed an unintended live descriptor request from the offline splitting
+  tests, fixing CRAN check failures when SIDRA access is blocked.
+
 # sidrar 0.5.0
 
 * Added an actionable `sidrar_limit_error` when the SIDRA API rejects a

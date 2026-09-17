@@ -99,6 +99,20 @@ from \code{sidrar_timeout_error}, \code{sidrar_tls_error}, \code{sidrar_dns_erro
 \code{sidrar_connection_error}, or \code{sidrar_transient_error} when the underlying
 failure can be identified conservatively.
 
+Cloudflare browser challenges raise \code{sidrar_challenge_error}, which
+inherits from \code{sidrar_http_error} and also carries \code{cf_ray} when available.
+For compatible values queries, the package retries through IBGE's official
+aggregate API v3 with \code{view=flat}. This fallback supports one geographic
+level, explicit or latest periods, standard variable/category selections,
+and the default format and precision. Unsupported selections retain the
+original challenge error with a \code{fallback_reason} field. Set
+\code{options(sidrar.fallback = FALSE)} to disable this alternative route.
+If the alternative request fails, its error carries \code{primary_error} with
+the original challenge. Availability still depends on IBGE; increasing
+retries does not solve a browser challenge.
+Automatic classification discovery (\code{classific = "all"}) still requires
+access to SIDRA's table descriptor before requesting values.
+
 When SIDRA rejects a query for exceeding its per-request value limit,
 \code{get_sidra()} raises a \code{sidrar_limit_error}, which also inherits from
 \code{sidrar_http_error}. The condition records \code{requested_values},

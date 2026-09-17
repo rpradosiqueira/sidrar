@@ -123,6 +123,12 @@ test_that("one effective geo filter and classification indexes can be selected",
 })
 
 test_that("geographic splitting rejects overlapping or ignored filters", {
+  testthat::local_mocked_bindings(
+    .fetch_descriptor = function(table) {
+      list(Classificacoes = list(list(Id = 81)))
+    },
+    .package = "sidrar"
+  )
   overlapping <- sidra_query(
     1612,
     variable = 214,
@@ -267,4 +273,45 @@ test_that("collect preserves the original error class and batch context", {
   )
   expect_identical(error$batch_index, 1L)
   expect_identical(error$batch_count, 1L)
+})
+
+test_that("collect preserves challenge details and stops remaining batches", {
+  old_options <- options(sidrar.fallback = FALSE)
+  on.exit(options(old_options), add = TRUE)
+  queries <- list(
+    sidra_query(api = "/t/1/n1/1/v/1/p/2020/h/n"),
+    sidra_query(api = "/t/1/n1/1/v/1/p/2021/h/n"),
+    sidra_query(api = "/t/1/n1/1/v/1/p/2022/h/n")
+  )
+  body <- "<html><script>window._cf_chl_opt = {};</script></html>"
+  calls <- 0L
+  testthat::local_mocked_bindings(
+    RETRY = function(...) {
+      calls <<- calls + 1L
+      if (calls == 1L) {
+        return(fake_http_response(body = values_without_header_json()))
+      }
+      fake_http_response(
+        status = 403L,
+        body = body,
+        headers = list("cf-ray" = "test-batch-ray-GRU")
+      )
+    },
+    .package = "httr"
+  )
+
+  error <- expect_error(
+    sidra_collect(queries),
+    "batch 2 of 3",
+    class = "sidrar_challenge_error"
+  )
+  expect_s3_class(error, "sidrar_http_error")
+  expect_identical(error$status_code, 403L)
+  expect_identical(error$response_body, body)
+  expect_identical(error$url, queries[[2L]]$url)
+  expect_identical(error$cf_ray, "test-batch-ray-GRU")
+  expect_identical(error$batch_index, 2L)
+  expect_identical(error$batch_count, 3L)
+  expect_identical(error$batch_url, queries[[2L]]$url)
+  expect_identical(calls, 2L)
 })

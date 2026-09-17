@@ -13,6 +13,21 @@ live_api_pause <- function() {
   Sys.sleep(seconds)
 }
 
+test_that("the reported census query works through the supported endpoints", {
+  skip_on_cran()
+  skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")
+  live_api_pause()
+
+  result <- get_sidra(
+    10061, period = "2022", geo = "State",
+    geo.filter = list(State = 31), variable = 2667,
+    classific = "c1568", category = list(c(9493, 9494, 9495, 99713))
+  )
+  expect_s3_class(result, "data.frame")
+  expect_identical(nrow(result), 4L)
+  expect_type(result$Valor, "double")
+})
+
 test_that("the live SIDRA values endpoint returns a current observation", {
   skip_on_cran()
   skip_if_not(run_live_tests(), "Set SIDRAR_RUN_LIVE_TESTS=true")

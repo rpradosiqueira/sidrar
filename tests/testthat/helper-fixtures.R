@@ -95,12 +95,16 @@ catalog_fixture <- function() {
   )
 }
 
-fake_http_response <- function(status = 200L, body = "[]") {
+fake_http_response <- function(
+  status = 200L,
+  body = "[]",
+  headers = list("content-type" = "application/json; charset=UTF-8")
+) {
   structure(
     list(
       url = "https://apisidra.ibge.gov.br/values/t/1",
       status_code = as.integer(status),
-      headers = list("content-type" = "application/json; charset=UTF-8"),
+      headers = headers,
       all_headers = list(),
       cookies = data.frame(),
       content = charToRaw(enc2utf8(body)),

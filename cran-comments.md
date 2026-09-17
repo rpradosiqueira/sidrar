@@ -1,37 +1,53 @@
 ## Release summary
 
-This release adds structured discovery, query planning, explicit sequential
-batching, opt-in metadata caching, and result provenance. It also adds an
-actionable `sidrar_limit_error` for requests rejected by SIDRA's per-request
-value limit and support for territorial-view queries. The existing
-`get_sidra()`, `search_sidra()`, and `info_sidra()` interfaces, defaults, and
-return contracts remain compatible.
+This is a corrective update to sidrar 0.5.0 in response to upstream SIDRA
+Cloudflare access challenges reported since September 15, 2026 (GitHub #29).
+Compatible values queries can use IBGE's official aggregate API v3 after a
+recognized browser challenge. Unsupported selections fail explicitly rather
+than being silently changed. No dependencies, public arguments, exports, or
+default return contracts have been changed.
+
+This update also fixes the current CRAN check failures in test-collect.R,
+including the M1mac additional issue: a splitting test unintentionally called
+the live table descriptor. The test now mocks that descriptor and remains
+fully offline.
 
 ## Test environments
 
 * Windows 11 x64 (build 26200), R 4.6.0 (2026-04-24 ucrt)
-* win-builder, Windows Server 2022 x64 (build 20348), R Under development
-  (unstable) (2026-08-24 r90445 ucrt)
+* macbuilder, Apple M1, macOS Tahoe 26.6, R 4.6.1 Patched
+  (2026-07-27 r90311)
 
 ## R CMD check results
 
 `R CMD check --as-cran` was run locally on the source tarball with CRAN
-incoming remote checks enabled. The exact same source tarball was checked on
-win-builder with R-devel. Both checks included the PDF and HTML manuals.
+incoming remote checks and PDF/HTML manuals enabled. The exact same source
+tarball was checked on macbuilder (including its PDF manual):
+https://mac.R-project.org/macbuilder/results/1789671693-2ea5a02f7b9a0712/
 
 0 errors | 0 warnings | 0 notes
 
-Six opt-in integration tests against the live SIDRA API also passed. They are
-skipped during ordinary package checks.
+The same tarball has been uploaded to win-builder R-devel; its result is
+pending and is not counted as a passed check here.
+
+The local package test suite passed 691 expectations, with no failures or
+warnings and seven opt-in live tests skipped. A separate bounded live check
+of the installed 0.5.1 reproduced the query from issue #29 using only api =
+url and returned all four expected observations through the official fallback.
 
 ## Downstream compatibility
 
 The current reverse imports were checked against the final source tarball
-with `_R_CHECK_FORCE_SUGGESTS_=true`:
+in an isolated library with `R CMD check --no-manual` and
+`_R_CHECK_FORCE_SUGGESTS_=true`:
 
 * `datazoom.amazonia` 1.2.0: OK
 * `PNADCperiods` 0.1.2: OK
 * `SidraFacil` 1.0.2: OK
+
+PNADCperiods' internal testthat reporter counted 19 warnings and 15 skips,
+with 1602 passes and no failures. A complete baseline check with sidrar 0.5.0
+returned the same counts and Status OK; no increase was observed.
 
 Their uses of the legacy `get_sidra()` and `info_sidra()` interfaces were also
 audited. Compatibility tests in `sidrar` cover the existing argument order,

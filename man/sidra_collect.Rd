@@ -14,7 +14,9 @@ non-empty list of \code{sidra_query} objects.}
 stored in each query: \code{"numeric"}, \code{"character"}, or \code{"both"}.}
 
 \item{provenance}{Logical. Attach URLs, access time, package version, and
-batch count as a \code{sidrar_provenance} attribute.}
+batch count as a \code{sidrar_provenance} attribute. URLs record the endpoint
+that supplied each batch; \code{requested_urls} is also included when a
+Cloudflare challenge required the official aggregate API fallback.}
 }
 \value{
 A base \code{\link[=data.frame]{data.frame()}}. When \code{provenance = TRUE}, its

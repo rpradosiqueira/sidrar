@@ -326,7 +326,9 @@ print.sidra_batch <- function(x, ...) {
 #' @param value_type Optional value representation overriding the preference
 #'   stored in each query: `"numeric"`, `"character"`, or `"both"`.
 #' @param provenance Logical. Attach URLs, access time, package version, and
-#'   batch count as a `sidrar_provenance` attribute.
+#'   batch count as a `sidrar_provenance` attribute. URLs record the endpoint
+#'   that supplied each batch; `requested_urls` is also included when a
+#'   Cloudflare challenge required the official aggregate API fallback.
 #'
 #' @return A base [data.frame()]. When `provenance = TRUE`, its
 #'   `sidrar_provenance` attribute can be read with [sidra_provenance()].
@@ -357,6 +359,7 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
   results <- vector("list", length(queries))
   signatures <- vector("list", length(queries))
   value_types <- character(length(queries))
+  actual_urls <- character(length(queries))
 
   for (index in seq_along(queries)) {
     query <- queries[[index]]
@@ -374,8 +377,12 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
     results[[index]] <- tryCatch(
       {
         .validate_sidra_url_semantics(query$url)
-        text <- .sidra_request(query$url)
-        .parse_sidra_values(text, query$header, current_value_type)
+        response <- .sidra_values_request(query$url)
+        actual_urls[[index]] <- response$url
+        .parse_sidra_values(
+          response$text, query$header, current_value_type,
+          response_header = response$response_header
+        )
       },
       error = function(e) {
         .sidra_batch_error(e, index, length(queries), query$url)
@@ -411,9 +418,13 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
       accessed_at = as.POSIXct(Sys.time(), tz = "UTC"),
       package_version = package_version,
       batch_count = length(queries),
-      urls = vapply(queries, `[[`, character(1), "url"),
+      urls = actual_urls,
       value_type = unique(value_types)
     )
+    requested_urls <- vapply(queries, `[[`, character(1), "url")
+    if (!identical(actual_urls, requested_urls)) {
+      attr(result, "sidrar_provenance")$requested_urls <- requested_urls
+    }
   }
   result
 }
@@ -425,6 +436,8 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
 #'
 #' @return The provenance list, with `accessed_at`, `package_version`,
 #'   `batch_count`, `urls`, and `value_type`; or `NULL` when none is attached.
+#'   When a fallback was used, `urls` records the actual endpoints and
+#'   `requested_urls` records the original queries.
 #' @seealso [sidra_collect()]
 #' @export
 sidra_provenance <- function(x) {

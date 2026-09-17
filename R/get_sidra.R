@@ -60,6 +60,20 @@
 #' `sidrar_connection_error`, or `sidrar_transient_error` when the underlying
 #' failure can be identified conservatively.
 #'
+#' Cloudflare browser challenges raise `sidrar_challenge_error`, which
+#' inherits from `sidrar_http_error` and also carries `cf_ray` when available.
+#' For compatible values queries, the package retries through IBGE's official
+#' aggregate API v3 with `view=flat`. This fallback supports one geographic
+#' level, explicit or latest periods, standard variable/category selections,
+#' and the default format and precision. Unsupported selections retain the
+#' original challenge error with a `fallback_reason` field. Set
+#' `options(sidrar.fallback = FALSE)` to disable this alternative route.
+#' If the alternative request fails, its error carries `primary_error` with
+#' the original challenge. Availability still depends on IBGE; increasing
+#' retries does not solve a browser challenge.
+#' Automatic classification discovery (`classific = "all"`) still requires
+#' access to SIDRA's table descriptor before requesting values.
+#'
 #' When SIDRA rejects a query for exceeding its per-request value limit,
 #' `get_sidra()` raises a `sidrar_limit_error`, which also inherits from
 #' `sidrar_http_error`. The condition records `requested_values`,
@@ -163,14 +177,18 @@ get_sidra <- function(
     request <- list(url = url, header = .api_has_header(url))
   }
 
-  text <- .sidra_request(request$url)
-  .parse_sidra_values(text, request$header, value_type)
+  response <- .sidra_values_request(request$url)
+  .parse_sidra_values(
+    response$text, request$header, value_type,
+    response_header = response$response_header
+  )
 }
 
 .parse_sidra_values <- function(
   text,
   header = TRUE,
-  value_type = c("numeric", "character", "both")
+  value_type = c("numeric", "character", "both"),
+  response_header = header
 ) {
   value_type <- match.arg(value_type)
   parsed <- .sidra_parse_json(
@@ -190,7 +208,7 @@ get_sidra <- function(
     )
   }
 
-  if (isTRUE(header)) {
+  if (isTRUE(response_header)) {
     if (nrow(result) == 0L) {
       .sidrar_abort(
         "SIDRA API returned no header record",
@@ -208,7 +226,9 @@ get_sidra <- function(
       )
     }
 
-    names(result) <- column_names
+    if (isTRUE(header)) {
+      names(result) <- column_names
+    }
     result <- result[-1L, , drop = FALSE]
     row.names(result) <- NULL
   }

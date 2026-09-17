@@ -191,6 +191,34 @@
   invisible(x)
 }
 
+.sidra_response_header <- function(response, name) {
+  headers <- httr::headers(response)
+  index <- match(tolower(name), tolower(names(headers)))
+  if (is.na(index)) {
+    return("")
+  }
+  trimws(.scalar_text(headers[[index]]))
+}
+
+.sidra_is_challenge <- function(response, body) {
+  mitigation <- .sidra_response_header(response, "cf-mitigated")
+  if (identical(tolower(mitigation), "challenge")) {
+    return(TRUE)
+  }
+
+  html_root <- grepl(
+    "^\\s*(?:<!doctype\\s+html(?:\\s|>)|<html(?:\\s|>))",
+    body,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  html_root && grepl(
+    "/cdn-cgi/challenge-platform/|\\b_cf_chl_opt\\b",
+    body,
+    perl = TRUE
+  )
+}
+
 .sidra_request <- function(url) {
   timeout <- getOption("sidrar.timeout", 60)
   retries <- getOption("sidrar.retries", 3L)
@@ -235,6 +263,29 @@
     error = function(e) ""
   )
   status <- httr::status_code(response)
+
+  if (.sidra_is_challenge(response, body)) {
+    cf_ray <- .sidra_response_header(response, "cf-ray")
+    if (!nzchar(cf_ray)) {
+      cf_ray <- NULL
+    }
+    .sidrar_abort(
+      paste0(
+        sprintf(
+          "SIDRA API returned a Cloudflare browser challenge (HTTP %s). ",
+          status
+        ),
+        "sidrar cannot complete this interactive check. ",
+        "Contact IBGE with the request URL",
+        if (is.null(cf_ray)) "." else paste0(" and Ray ID: ", cf_ray, ".")
+      ),
+      c("sidrar_challenge_error", "sidrar_http_error"),
+      status_code = status,
+      response_body = body,
+      url = url,
+      cf_ray = cf_ray
+    )
+  }
 
   if (httr::http_error(response)) {
     detail <- trimws(gsub("[\r\n]+", " ", body))

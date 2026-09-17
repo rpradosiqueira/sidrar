@@ -39,6 +39,174 @@ test_that("HTTP failures retain status and API details", {
   )
 })
 
+test_that("challenge headers produce a structured actionable error", {
+  old_options <- options(sidrar.fallback = FALSE)
+  on.exit(options(old_options), add = TRUE)
+  body <- "<html><head><title>Just a moment...</title></head></html>"
+  testthat::local_mocked_bindings(
+    RETRY = function(...) {
+      fake_http_response(
+        status = 403L,
+        body = body,
+        headers = list(
+          "Content-Type" = "text/html; charset=UTF-8",
+          "CF-Mitigated" = " Challenge ",
+          "CF-Ray" = "test-ray-GRU"
+        )
+      )
+    },
+    .package = "httr"
+  )
+
+  path <- "/t/7060/n1/1/v/63/p/last/c315/7169/h/n"
+  error <- expect_error(
+    suppressMessages(get_sidra(api = path)),
+    regexp = "browser challenge.*HTTP 403",
+    class = "sidrar_challenge_error"
+  )
+  expect_s3_class(error, "sidrar_http_error")
+  expect_s3_class(error, "sidrar_error")
+  expect_identical(error$status_code, 403L)
+  expect_identical(error$response_body, body)
+  expect_identical(
+    error$url,
+    paste0("https://apisidra.ibge.gov.br/values", path)
+  )
+  expect_identical(error$cf_ray, "test-ray-GRU")
+  expect_match(conditionMessage(error), "Contact IBGE")
+  expect_match(conditionMessage(error), "test-ray-GRU", fixed = TRUE)
+  expect_false(grepl("<html>", conditionMessage(error), fixed = TRUE))
+})
+
+test_that("challenge headers work without a body or Ray ID", {
+  testthat::local_mocked_bindings(
+    RETRY = function(...) {
+      fake_http_response(
+        status = 403L,
+        body = "",
+        headers = list("cf-mitigated" = "challenge")
+      )
+    },
+    .package = "httr"
+  )
+  error <- expect_error(
+    sidrar:::.sidra_request("https://apisidra.ibge.gov.br/values/t/1"),
+    class = "sidrar_challenge_error"
+  )
+  expect_identical(error$response_body, "")
+  expect_null(error$cf_ray)
+})
+
+test_that("HTML challenge markers are detected before JSON parsing", {
+  old_options <- options(sidrar.fallback = FALSE)
+  on.exit(options(old_options), add = TRUE)
+  bodies <- c(
+    paste0(
+      " \n<!DOCTYPE html><html><head><title>Just a moment...</title>",
+      "</head><body>", strrep("padding ", 100L),
+      '<script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/',
+      'v1"></script></body></html>'
+    ),
+    "<HTML><script>window._cf_chl_opt = {};</script></HTML>"
+  )
+  response <- NULL
+  testthat::local_mocked_bindings(
+    RETRY = function(...) response,
+    .package = "httr"
+  )
+
+  for (status in c(200L, 403L, 503L)) {
+    for (body in bodies) {
+      response <- fake_http_response(
+        status = status,
+        body = body,
+        headers = list("content-type" = "text/html")
+      )
+      error <- expect_error(
+        suppressMessages(get_sidra(api = "/t/1/n1/1/h/n")),
+        class = "sidrar_challenge_error"
+      )
+      expect_identical(error$status_code, status)
+      expect_identical(error$response_body, body)
+      expect_null(error$cf_ray)
+      expect_false(inherits(error, "sidrar_parse_error"))
+    }
+  }
+})
+
+test_that("generic forbidden responses are not misclassified as challenges", {
+  bodies <- c(
+    "Access denied",
+    "<html><title>Just a moment...</title>Cloudflare</html>",
+    '<html><script src="https://challenges.cloudflare.com/turnstile/v0/api.js">',
+    '{"message":"_cf_chl_opt and /cdn-cgi/challenge-platform/"}',
+    "Example: <html><script>window._cf_chl_opt = {};</script></html>"
+  )
+  response <- NULL
+  testthat::local_mocked_bindings(
+    RETRY = function(...) response,
+    .package = "httr"
+  )
+  for (body in bodies) {
+    response <- fake_http_response(
+      status = 403L,
+      body = body,
+      headers = list(
+        "server" = "cloudflare",
+        "cf-ray" = "test-ray-GRU",
+        "cf-mitigated" = "other"
+      )
+    )
+    error <- expect_error(
+      sidrar:::.sidra_request("https://apisidra.ibge.gov.br/values/t/1"),
+      class = "sidrar_http_error"
+    )
+    expect_false(inherits(error, "sidrar_challenge_error"))
+    expect_identical(error$response_body, body)
+  }
+})
+
+test_that("valid JSON containing challenge-related text remains valid data", {
+  text <- paste0(
+    '[{"NC":"1","NN":"<html>_cf_chl_opt ',
+    '/cdn-cgi/challenge-platform/ Just a moment Cloudflare</html>",',
+    '"V":"0.16"}]'
+  )
+  testthat::local_mocked_bindings(
+    RETRY = function(...) fake_http_response(body = text),
+    .package = "httr"
+  )
+  data <- suppressMessages(get_sidra(api = "/t/1/n1/1/h/n"))
+  expect_identical(data$V, 0.16)
+  expect_identical(data$NC, "1")
+  expect_match(data$NN, "_cf_chl_opt", fixed = TRUE)
+})
+
+test_that("the real retry loop stops after one forbidden challenge response", {
+  old_options <- options(sidrar.retries = 5L)
+  on.exit(options(old_options), add = TRUE)
+  calls <- 0L
+  testthat::local_mocked_bindings(
+    request_perform = function(...) {
+      calls <<- calls + 1L
+      fake_http_response(
+        status = 403L,
+        body = "<html>Just a moment...</html>",
+        headers = list("cf-mitigated" = "challenge")
+      )
+    },
+    backoff_full_jitter = function(...) {
+      stop("A forbidden challenge must not trigger retry backoff")
+    },
+    .package = "httr"
+  )
+  expect_error(
+    sidrar:::.sidra_request("https://apisidra.ibge.gov.br/values/t/1"),
+    class = "sidrar_challenge_error"
+  )
+  expect_identical(calls, 1L)
+})
+
 test_that("value-limit responses produce an actionable structured error", {
   body <- paste(
     "Quantidade de valores solicitados: 83550",

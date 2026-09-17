@@ -263,6 +263,21 @@ sidra_cache_clear()
 
 Use `refresh = TRUE` to bypass and replace a cached discovery entry.
 
+Cloudflare browser challenges are identified as `sidrar_challenge_error`.
+For compatible values queries, `get_sidra()` and `sidra_collect()` can use
+IBGE's official aggregate API v3 as an alternative endpoint. This fallback
+supports one geographic level, explicit or latest periods, standard
+variable/category selections, and the default format and precision. It
+preserves the requested headers and special-value handling, and announces
+when the alternative is used. Set `options(sidrar.fallback = FALSE)` to
+disable it. Unsupported selections retain the original challenge error with
+an explanation in `fallback_reason`.
+
+Collection provenance records actual source endpoints in `urls` and the
+original queries in `requested_urls` when fallback occurs. If both official
+endpoints fail, report the URL, time, and the error's `cf_ray` to IBGE;
+increasing retries cannot solve an interactive browser challenge.
+
 Invalid parameters and API limits are reported with the response returned by
 SIDRA. See the
 [official API help](https://apisidra.ibge.gov.br/home/ajuda) for the complete
