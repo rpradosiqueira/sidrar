@@ -94,6 +94,12 @@ metadata$categories
 ```
 
 The legacy `search_sidra()` and `info_sidra()` contracts remain unchanged.
+If SIDRA's descriptor returns a recognized browser challenge, `info_sidra()`
+uses official aggregate metadata and periods. It discloses unavailable
+descriptor-specific names, geographic counts, and variable availability
+exceptions in `attr(metadata, "sidrar_metadata")` when `metadata` is its
+return value; it does not invent equivalent fields. `wb = TRUE` still opens
+the original descriptor. `options(sidrar.fallback = FALSE)` disables this route.
 
 ## Build a structured request
 
@@ -153,7 +159,7 @@ sidra_plan(query)
 No service limit is assumed by the planner. If a limit is known for the
 current request, pass it explicitly with `sidra_plan(query, limit = ...)`.
 
-## Split and collect explicit batches
+## Split and collect batches
 
 When one dimension contains many explicit members, split it into disjoint
 batches and collect them sequentially:
@@ -166,12 +172,45 @@ sidra_provenance(data)
 
 `sidra_collect()` requires identical names and column types across batches. It
 does not sort or deduplicate rows. Category members containing a space are
-SIDRA sums and are kept indivisible. Queries supplied only through `api =`
-cannot be split because their original argument structure is unavailable.
-Relative periods, period ranges, and embedded comma lists must first be
-expanded to one explicit member per vector element. A geographic filter can
+SIDRA sums and are kept indivisible in structured queries. URLs can now be
+split directly; period selectors `all`, `first`, `last`, and ranges use the
+official inventory without inventing calendar periods. Other special
+selectors require explicit codes. A geographic filter can
 be split only for a query with one non-Brazil territorial level; multiple
 levels would repeat the unchanged levels in every batch.
+
+Version 0.6.0 adds opt-in period batching and resumable local checkpoints:
+
+```{r, eval = FALSE}
+url <- "/t/6468/n1/all/n2/all/n3/all/v/4099/p/all/h/n"
+batches <- sidra_split(url, "period", size = 8)
+batches$resolution$selection
+
+data <- sidra_collect(
+  url, batch_size = 8, value_type = "both",
+  checkpoint = "sidrar-pnad", provenance = TRUE
+)
+# Repeat the same call after an interruption to reuse completed batches.
+sidra_provenance(data)$batch_accessed_at
+sidra_provenance(data)$resumed
+```
+
+`batch_size` limits periods, not cells: one period can still exceed the API
+limit and require splitting another explicit dimension. `get_sidra()` remains
+unchanged and does not split or store values. Checkpoints freeze the period
+inventory, including relative selectors when `batch_size` is omitted, and
+validate settings, package version, checksums, and schemas before reuse.
+They are trusted local files, separate from the metadata cache. An existing
+checkpoint is never silently cleared; use a new directory for a fresh extract.
+Stored and new batches may span source revisions, so inspect access times.
+The result is still combined in memory, not queried from disk. A stale
+`.sidrar-lock` after a hard crash must only be removed after confirming there
+is no running collector. URL geographic splitting requires direct codes;
+use a structured query for containment filters.
+
+For comparisons between services or collections, align by territorial-level,
+location, period, variable, and classification codes, not row positions.
+Names can change and two territorial levels can reuse a location code.
 
 Territorial views (`G`) and extinct territorial units (`/u/y`) are available
 through additive arguments:
@@ -253,7 +292,8 @@ options(
 ```
 
 Catalog and metadata caching is explicit and disabled by default. Value
-responses are never cached:
+responses are not cached automatically; explicit collection checkpoints are
+separate from the metadata cache:
 
 ```{r, eval = FALSE}
 metadata <- sidra_metadata(7060, cache = TRUE)

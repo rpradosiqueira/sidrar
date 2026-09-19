@@ -227,7 +227,9 @@ test_that("get_sidra can construct defaults after a descriptor challenge", {
   expect_identical(values$Valor, 0.16)
 })
 
-test_that("info_sidra keeps its legacy descriptor contract", {
+test_that("info_sidra preserves descriptor errors when fallback is disabled", {
+  old <- options(sidrar.fallback = FALSE)
+  on.exit(options(old), add = TRUE)
   primary <- classification_challenge()
   testthat::local_mocked_bindings(
     .fetch_descriptor = function(table) stop(primary),

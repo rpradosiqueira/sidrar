@@ -40,6 +40,14 @@ test_that("the public API and defaults remain backward compatible", {
   expect_null(get_defaults$geo_view)
   expect_identical(get_defaults$include_extinct, FALSE)
   expect_identical(formals(info_sidra)$wb, FALSE)
+  expect_identical(names(formals(sidra_collect))[1:3],
+                   c("x", "value_type", "provenance"))
+  expect_identical(names(formals(sidra_collect))[4:6],
+                   c("batch_size", "checkpoint", "resume"))
+  expect_null(formals(sidra_collect)$batch_size)
+  expect_null(formals(sidra_collect)$checkpoint)
+  expect_identical(formals(sidra_collect)$resume, TRUE)
+  expect_identical(names(formals(sidra_split)), c("query", "by", "size", "index"))
 })
 
 test_that("public validation fails before any network request", {

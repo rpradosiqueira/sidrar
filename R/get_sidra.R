@@ -105,9 +105,10 @@
 #' When SIDRA rejects a query for exceeding its per-request value limit,
 #' `get_sidra()` raises a `sidrar_limit_error`, which also inherits from
 #' `sidrar_http_error`. The condition records `requested_values`,
-#' `limit_values`, and `minimum_batches`. Split an explicit dimension such as
-#' `period`, `geo.filter`, `variable`, or `category` across disjoint calls and
-#' combine the returned rows.
+#' `limit_values`, and `minimum_batches`. Use [sidra_split()] to split a URL or
+#' structured query across disjoint calls, or [sidra_collect()] with
+#' `batch_size` for opt-in period batching and `checkpoint` for resumable
+#' downloads. `get_sidra()` itself does not split requests or save values.
 #'
 #' The SIDRA API uses special value symbols. With the default
 #' `value_type = "numeric"`, non-numeric symbols such as `"-"`, `"X"`,

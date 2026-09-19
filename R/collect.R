@@ -131,14 +131,13 @@
   value
 }
 
-#' Split an explicit SIDRA query into disjoint batches
+#' Split a SIDRA query into disjoint batches
 #'
 #' Divides one explicit query dimension without downloading values. The
-#' resulting batches can be executed with [sidra_collect()]. Special selectors
-#' such as `all`, `allxt`, `first`, and `last` must first be resolved to
-#' explicit codes. Each vector element must represent one member; embedded
-#' comma lists and period ranges are rejected because their cardinality cannot
-#' be enforced by `size`.
+#' resulting batches can be executed with [sidra_collect()]. Period selectors
+#' `all`, `first`, `last`, and ranges are resolved through [sidra_periods()]
+#' into a fixed inventory before splitting. Other special selections must be
+#' expanded explicitly. No values are downloaded during splitting.
 #'
 #' Geographic filters can be split only when the query requests one non-Brazil
 #' geographic level. Queries with multiple territorial levels are rejected
@@ -146,9 +145,9 @@
 #' already resolved in the original URL are reused without another metadata
 #' request.
 #'
-#' @param query A structured [sidra_query()] object. Queries created from
-#'   `api =` URLs cannot be split because their original argument structure is
-#'   unavailable.
+#' @param query A [sidra_query()] object or relative/complete SIDRA values URL.
+#'   URL parameter order and unsplit selections are preserved. URL geographic
+#'   splitting requires direct explicit codes at one non-Brazil level.
 #' @param by One of `"period"`, `"variable"`, `"geo.filter"`, or
 #'   `"category"`.
 #' @param size Maximum number of selected members in each batch.
@@ -176,17 +175,23 @@ sidra_split <- function(
   size,
   index = 1L
 ) {
+  if (is.character(query) && length(query) == 1L && !is.na(query)) {
+    query <- sidra_query(api = query)
+  }
   if (!inherits(query, "sidra_query") || !is.list(query)) {
     stop("'query' must be a sidra_query object", call. = FALSE)
-  }
-  if (is.null(query$parameters$table)) {
-    stop("Queries supplied through 'api' cannot be split safely", call. = FALSE)
   }
 
   by <- match.arg(by)
   size <- .sidra_validate_split_size(size)
   index <- .sidra_validate_split_index(index)
   parameters <- query$parameters
+  if (is.null(parameters$table) ||
+      (identical(by, "period") &&
+       (any(grepl("all|first|last|-|,", as.character(parameters$period))) ||
+        !is.null(names(parameters$period))))) {
+    return(.sidra_split_url(query, by, size, index))
+  }
   effective_classifications <- .sidra_effective_classifications(query$url)
   parameters$classific <- effective_classifications$classific
   parameters$category <- effective_classifications$category
@@ -264,6 +269,9 @@ print.sidra_batch <- function(x, ...) {
 }
 
 .sidra_collect_queries <- function(x) {
+  if (is.character(x) && length(x) == 1L && !is.na(x)) {
+    return(list(sidra_query(api = x)))
+  }
   if (inherits(x, "sidra_query")) {
     return(list(x))
   }
@@ -322,13 +330,37 @@ print.sidra_batch <- function(x, ...) {
 #' them. Parallel requests are intentionally not used.
 #'
 #' @param x A [sidra_query()], [sidra_plan()], [sidra_split()] result, or a
-#'   non-empty list of `sidra_query` objects.
+#'   non-empty list of `sidra_query` objects; also accepts a SIDRA values URL.
 #' @param value_type Optional value representation overriding the preference
 #'   stored in each query: `"numeric"`, `"character"`, or `"both"`.
 #' @param provenance Logical. Attach URLs, access time, package version, and
 #'   batch count as a `sidrar_provenance` attribute. URLs record the endpoint
 #'   that supplied each batch; `requested_urls` is also included when a
 #'   Cloudflare challenge required the official aggregate API fallback.
+#' @param batch_size Optional positive integer. Split each input query by
+#'   period into batches of at most this many periods before downloading.
+#'   This is not a bound on the number of values: a single period can still
+#'   exceed the service limit. The default `NULL` preserves existing batches.
+#' @param checkpoint Optional path to a dedicated local directory. Successful
+#'   batches are saved with checksums and a frozen query inventory. No values
+#'   are saved to disk by default. Only use checkpoints you trust.
+#' @param resume Logical. Reuse verified completed batches in `checkpoint`
+#'   (default `TRUE`). An existing checkpoint must match the original queries,
+#'   value representation, batch size, and package version. `FALSE` requires
+#'   a new directory; existing files are never silently cleared.
+#'
+#' @details Checkpoints are separate from the metadata cache. They preserve
+#'   successful responses, including their original access times; they are not
+#'   refreshed automatically and can span upstream revisions. Use a new
+#'   directory for a fresh collection. Relative periods are resolved once and
+#'   reused on resume, even if the current catalog has changed. Corruption,
+#'   incompatible schemas, mismatched settings, and concurrent writers fail
+#'   explicitly. An interrupted process may leave a `.sidrar-lock` directory;
+#'   remove that lock only after confirming that no collector is still running.
+#'   Results are still combined in memory; checkpoints are not an out-of-core
+#'   database. Row order is not a key: join different extracts by identifiers.
+#'   Warnings from completed batches are saved and signaled again on resume,
+#'   so reuse does not hide incomplete-coverage diagnostics.
 #'
 #' @return A base [data.frame()]. When `provenance = TRUE`, its
 #'   `sidrar_provenance` attribute can be read with [sidra_provenance()].
@@ -346,7 +378,10 @@ print.sidra_batch <- function(x, ...) {
 #' sidra_collect(sidra_split(query, "period", size = 3))
 #' }
 #' @export
-sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
+sidra_collect <- function(
+  x, value_type = NULL, provenance = FALSE, batch_size = NULL,
+  checkpoint = NULL, resume = TRUE
+) {
   if (!is.null(value_type)) {
     value_type <- match.arg(value_type, c("numeric", "character", "both"))
   }
@@ -355,11 +390,33 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
     stop("'provenance' must be TRUE or FALSE", call. = FALSE)
   }
 
-  queries <- .sidra_collect_queries(x)
+  if (!is.null(batch_size)) {
+    batch_size <- .sidra_validate_split_size(batch_size)
+  }
+  .sidra_checkpoint_validate(checkpoint, resume)
+  original <- .sidra_collect_queries(x)
+  identity <- .sidra_collection_identity(original, value_type, batch_size)
+  state <- .sidra_checkpoint_open(checkpoint, identity, resume)
+  on.exit(.sidra_checkpoint_unlock(state), add = TRUE)
+  if (!is.null(state$manifest)) {
+    queries <- state$manifest$queries
+  } else {
+    queries <- if (is.null(batch_size) && is.null(checkpoint)) original else unlist(
+      lapply(original, function(query) {
+        sidra_split(query, by = "period", size = if (is.null(batch_size)) {
+          .Machine$integer.max
+        } else batch_size)$queries
+      }), recursive = FALSE
+    )
+    state <- .sidra_checkpoint_initialize(state, identity, queries)
+  }
   results <- vector("list", length(queries))
   signatures <- vector("list", length(queries))
   value_types <- character(length(queries))
   actual_urls <- character(length(queries))
+  accessed_at <- as.POSIXct(rep(NA_real_, length(queries)),
+                           origin = "1970-01-01", tz = "UTC")
+  reused <- logical(length(queries))
 
   for (index in seq_along(queries)) {
     query <- queries[[index]]
@@ -374,20 +431,40 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
     }
     value_types[[index]] <- current_value_type
 
-    results[[index]] <- tryCatch(
+    saved <- .sidra_checkpoint_read(state, index)
+    reused[[index]] <- !is.null(saved)
+    batch_warnings <- list()
+    batch <- tryCatch(
       {
-        .validate_sidra_url_semantics(query$url)
-        response <- .sidra_values_request(query$url)
-        actual_urls[[index]] <- response$url
-        .parse_sidra_values(
-          response$text, query$header, current_value_type,
-          response_header = response$response_header
-        )
+        if (!is.null(saved)) {
+          for (condition in saved$warnings) warning(condition)
+          saved
+        } else withCallingHandlers({
+          .validate_sidra_url_semantics(query$url)
+          response <- .sidra_values_request(query$url)
+          data <- .parse_sidra_values(
+            response$text, query$header, current_value_type,
+            response_header = response$response_header
+          )
+          list(
+            data = data,
+            url = response$url,
+            accessed_at = as.POSIXct(Sys.time(), tz = "UTC"),
+            warnings = batch_warnings
+          )
+        }, warning = function(w) {
+          batch_warnings[[length(batch_warnings) + 1L]] <<- w
+        })
       },
       error = function(e) {
+        e$checkpoint <- state$directory
+        e$completed_batches <- index - 1L
         .sidra_batch_error(e, index, length(queries), query$url)
       }
     )
+    results[[index]] <- batch$data
+    actual_urls[[index]] <- batch$url
+    accessed_at[[index]] <- batch$accessed_at
     signatures[[index]] <- .sidra_result_signature(results[[index]])
     if (index > 1L && !identical(signatures[[index]], signatures[[1L]])) {
       .sidrar_abort(
@@ -404,6 +481,9 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
         expected_classes = signatures[[1L]]$classes,
         received_classes = signatures[[index]]$classes
       )
+    }
+    if (!reused[[index]]) {
+      state <- .sidra_checkpoint_write(state, index, batch)
     }
   }
 
@@ -425,6 +505,10 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
     if (!identical(actual_urls, requested_urls)) {
       attr(result, "sidrar_provenance")$requested_urls <- requested_urls
     }
+    if (!is.null(checkpoint)) {
+      attr(result, "sidrar_provenance")$batch_accessed_at <- accessed_at
+      attr(result, "sidrar_provenance")$resumed <- reused
+    }
   }
   result
 }
@@ -438,6 +522,8 @@ sidra_collect <- function(x, value_type = NULL, provenance = FALSE) {
 #'   `batch_count`, `urls`, and `value_type`; or `NULL` when none is attached.
 #'   When a fallback was used, `urls` records the actual endpoints and
 #'   `requested_urls` records the original queries.
+#'   Checkpointed collections also include `batch_accessed_at` (original
+#'   download times) and `resumed` (logical flags for reused batches).
 #' @seealso [sidra_collect()]
 #' @export
 sidra_provenance <- function(x) {

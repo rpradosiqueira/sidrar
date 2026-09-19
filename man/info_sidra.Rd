@@ -24,7 +24,16 @@ classifications, categories, and geographic levels available in a table.
 \details{
 Metadata is requested live from the official descriptor endpoint
 and is not cached by the package. The timeout and retry options described
-in \code{\link[=get_sidra]{get_sidra()}} also apply.
+in \code{\link[=get_sidra]{get_sidra()}} also apply. If the descriptor returns a recognized
+Cloudflare challenge, the official aggregate API v3 metadata and periods
+are used unless \code{options(sidrar.fallback = FALSE)} is set. This alternative
+preserves the five legacy components but cannot supply descriptor-specific
+geographic names, active-unit counts, or variable availability exceptions.
+Geographic descriptions label the unavailable counts explicitly; no zero
+counts or availability ranges are inferred. The \code{sidrar_metadata} attribute
+records the alternative source URLs and unavailable fields. Periods are
+listed as codes, without assuming continuous coverage. Missing variable
+units are recorded in this attribute and omitted from their descriptions.
 }
 \examples{
 \dontrun{

@@ -9,7 +9,16 @@
 #'
 #' @details Metadata is requested live from the official descriptor endpoint
 #'   and is not cached by the package. The timeout and retry options described
-#'   in [get_sidra()] also apply.
+#'   in [get_sidra()] also apply. If the descriptor returns a recognized
+#'   Cloudflare challenge, the official aggregate API v3 metadata and periods
+#'   are used unless `options(sidrar.fallback = FALSE)` is set. This alternative
+#'   preserves the five legacy components but cannot supply descriptor-specific
+#'   geographic names, active-unit counts, or variable availability exceptions.
+#'   Geographic descriptions label the unavailable counts explicitly; no zero
+#'   counts or availability ranges are inferred. The `sidrar_metadata` attribute
+#'   records the alternative source URLs and unavailable fields. Periods are
+#'   listed as codes, without assuming continuous coverage. Missing variable
+#'   units are recorded in this attribute and omitted from their descriptions.
 #'
 #' @return When `wb = FALSE`, a list with components `table`, `period`,
 #'   `variable`, `classific_category`, and `geo`. When `wb = TRUE`, the
@@ -35,12 +44,25 @@ info_sidra <- function(x, wb = FALSE) {
     return(invisible(url))
   }
 
-  .descriptor_to_legacy_info(.fetch_descriptor(table))
+  descriptor <- tryCatch(
+    .fetch_descriptor(table),
+    sidrar_challenge_error = function(e) e
+  )
+  if (inherits(descriptor, "sidrar_challenge_error")) {
+    return(.info_sidra_fallback(table, descriptor))
+  }
+  .descriptor_to_legacy_info(descriptor, expected_table = table)
 }
 
-.descriptor_to_legacy_info <- function(descriptor) {
+.descriptor_to_legacy_info <- function(descriptor, expected_table = NULL) {
   if (!is.list(descriptor) || is.null(descriptor$Id) ||
-        is.null(descriptor$Nome)) {
+        is.null(descriptor$Nome) ||
+        !.info_valid_id(descriptor[["Id", exact = TRUE]]) ||
+        !.info_valid_text(descriptor[["Nome", exact = TRUE]]) ||
+        (!is.null(expected_table) && !identical(
+          .discovery_canonical_digits(.info_id_text(descriptor$Id)),
+          .discovery_canonical_digits(as.character(expected_table))
+        ))) {
     .sidrar_abort(
       "SIDRA API returned an invalid table descriptor",
       "sidrar_parse_error"

@@ -144,9 +144,10 @@ are not inferred by these local checks.
 When SIDRA rejects a query for exceeding its per-request value limit,
 \code{get_sidra()} raises a \code{sidrar_limit_error}, which also inherits from
 \code{sidrar_http_error}. The condition records \code{requested_values},
-\code{limit_values}, and \code{minimum_batches}. Split an explicit dimension such as
-\code{period}, \code{geo.filter}, \code{variable}, or \code{category} across disjoint calls and
-combine the returned rows.
+\code{limit_values}, and \code{minimum_batches}. Use \code{\link[=sidra_split]{sidra_split()}} to split a URL or
+structured query across disjoint calls, or \code{\link[=sidra_collect]{sidra_collect()}} with
+\code{batch_size} for opt-in period batching and \code{checkpoint} for resumable
+downloads. \code{get_sidra()} itself does not split requests or save values.
 
 The SIDRA API uses special value symbols. With the default
 \code{value_type = "numeric"}, non-numeric symbols such as \code{"-"}, \code{"X"},

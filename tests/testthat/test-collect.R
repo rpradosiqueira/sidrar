@@ -36,7 +36,10 @@ test_that("category sums remain indivisible members when split", {
   expect_match(batches$queries[[2L]]$url, "/c81/2702/", fixed = TRUE)
 })
 
-test_that("split rejects special selectors, duplicates, and api paths", {
+test_that("split resolves period selectors and URLs but rejects duplicates", {
+  local_mocked_bindings(sidra_periods = function(table, ...) {
+    data.frame(table_id = "1612", period_id = as.character(2018:2022))
+  }, .package = "sidrar")
   special <- sidra_query(
     1612,
     period = "all",
@@ -44,7 +47,7 @@ test_that("split rejects special selectors, duplicates, and api paths", {
     classific = "c81",
     category = list(2702)
   )
-  expect_error(sidra_split(special, "period", 2), "explicit values")
+  expect_length(sidra_split(special, "period", 2)$queries, 3L)
 
   relative <- sidra_query(
     1612,
@@ -53,7 +56,7 @@ test_that("split rejects special selectors, duplicates, and api paths", {
     classific = "c81",
     category = list(2702)
   )
-  expect_error(sidra_split(relative, "period", 2), "explicit values")
+  expect_length(sidra_split(relative, "period", 2)$queries, 3L)
 
   ranged <- sidra_query(
     1612,
@@ -62,7 +65,7 @@ test_that("split rejects special selectors, duplicates, and api paths", {
     classific = "c81",
     category = list(2702)
   )
-  expect_error(sidra_split(ranged, "period", 2), "explicit values")
+  expect_length(sidra_split(ranged, "period", 2)$queries, 3L)
 
   duplicated <- sidra_query(
     1612,
@@ -75,7 +78,7 @@ test_that("split rejects special selectors, duplicates, and api paths", {
   expect_error(sidra_split(duplicated, "variable", 1), "duplicates")
 
   path <- sidra_query(api = "/t/1612/n1/1/v/214/p/2021/h/n")
-  expect_error(sidra_split(path, "period", 1), "cannot be split safely")
+  expect_identical(sidra_split(path, "period", 1)$queries[[1L]]$url, path$url)
   expect_error(sidra_split(duplicated, "variable", 3e9), "positive integer")
   expect_error(
     sidra_split(duplicated, "variable", 1, index = 3e9),

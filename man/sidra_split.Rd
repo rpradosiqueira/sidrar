@@ -2,7 +2,7 @@
 % Please edit documentation in R/collect.R
 \name{sidra_split}
 \alias{sidra_split}
-\title{Split an explicit SIDRA query into disjoint batches}
+\title{Split a SIDRA query into disjoint batches}
 \usage{
 sidra_split(
   query,
@@ -12,9 +12,9 @@ sidra_split(
 )
 }
 \arguments{
-\item{query}{A structured \code{\link[=sidra_query]{sidra_query()}} object. Queries created from
-\verb{api =} URLs cannot be split because their original argument structure is
-unavailable.}
+\item{query}{A \code{\link[=sidra_query]{sidra_query()}} object or relative/complete SIDRA values URL.
+URL parameter order and unsplit selections are preserved. URL geographic
+splitting requires direct explicit codes at one non-Brazil level.}
 
 \item{by}{One of \code{"period"}, \code{"variable"}, \code{"geo.filter"}, or
 \code{"category"}.}
@@ -30,11 +30,10 @@ their original order.
 }
 \description{
 Divides one explicit query dimension without downloading values. The
-resulting batches can be executed with \code{\link[=sidra_collect]{sidra_collect()}}. Special selectors
-such as \code{all}, \code{allxt}, \code{first}, and \code{last} must first be resolved to
-explicit codes. Each vector element must represent one member; embedded
-comma lists and period ranges are rejected because their cardinality cannot
-be enforced by \code{size}.
+resulting batches can be executed with \code{\link[=sidra_collect]{sidra_collect()}}. Period selectors
+\code{all}, \code{first}, \code{last}, and ranges are resolved through \code{\link[=sidra_periods]{sidra_periods()}}
+into a fixed inventory before splitting. Other special selections must be
+expanded explicitly. No values are downloaded during splitting.
 }
 \details{
 Geographic filters can be split only when the query requests one non-Brazil

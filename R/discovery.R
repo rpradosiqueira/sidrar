@@ -674,8 +674,43 @@ sidra_locations <- function(
     simplify = FALSE,
     context = "table periods"
   )
-  periods <- .discovery_records(payload)
-  rows <- lapply(periods, function(period) {
+  invalid <- function(reason) {
+    .sidrar_abort(
+      paste0("The official period inventory is invalid: ", reason),
+      "sidrar_parse_error", url = url
+    )
+  }
+  # Unlike display-only metadata, this inventory can define the membership of
+  # a complete batched download. Never discard malformed records silently.
+  if (!is.list(payload)) invalid("expected period records")
+  periods <- if (is.null(names(payload))) payload else list(payload)
+  ids <- vapply(periods, function(period) {
+    if (!is.list(period) || is.null(names(period)) ||
+        anyNA(names(period)) || anyDuplicated(names(period)) ||
+        !"id" %in% names(period)) {
+      invalid("expected a record with one period identifier")
+    }
+    id <- period[["id", exact = TRUE]]
+    if (length(id) != 1L || is.na(id) || !is.atomic(id)) {
+      invalid("period identifiers must be scalar and non-missing")
+    }
+    if (is.character(id)) {
+      if (!nzchar(id) || grepl("[[:space:][:cntrl:]]", id)) {
+        invalid("period identifiers must be non-empty codes")
+      }
+      return(id)
+    }
+    if (!is.numeric(id) || !is.finite(id) || id < 0 ||
+        id != floor(id) || id > 2^53 - 1) {
+      invalid("numeric period identifiers must be exactly representable integers")
+    }
+    format(id, scientific = FALSE, trim = TRUE, digits = 22L)
+  }, character(1))
+  if (anyDuplicated(.discovery_canonical_digits(ids))) {
+    invalid("duplicate period identifiers")
+  }
+  rows <- lapply(seq_along(periods), function(i) {
+    period <- periods[[i]]
     literals <- period$literals
     if (is.null(literals)) {
       literals <- period$nome
@@ -692,7 +727,7 @@ sidra_locations <- function(
 
     row <- data.frame(
       table_id = table,
-      period_id = .discovery_text(period$id),
+      period_id = ids[[i]],
       period_name = period_name,
       modified = .discovery_text(period$modificacao),
       stringsAsFactors = FALSE

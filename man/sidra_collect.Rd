@@ -4,11 +4,18 @@
 \alias{sidra_collect}
 \title{Collect one or more planned SIDRA queries}
 \usage{
-sidra_collect(x, value_type = NULL, provenance = FALSE)
+sidra_collect(
+  x,
+  value_type = NULL,
+  provenance = FALSE,
+  batch_size = NULL,
+  checkpoint = NULL,
+  resume = TRUE
+)
 }
 \arguments{
 \item{x}{A \code{\link[=sidra_query]{sidra_query()}}, \code{\link[=sidra_plan]{sidra_plan()}}, \code{\link[=sidra_split]{sidra_split()}} result, or a
-non-empty list of \code{sidra_query} objects.}
+non-empty list of \code{sidra_query} objects; also accepts a SIDRA values URL.}
 
 \item{value_type}{Optional value representation overriding the preference
 stored in each query: \code{"numeric"}, \code{"character"}, or \code{"both"}.}
@@ -17,6 +24,20 @@ stored in each query: \code{"numeric"}, \code{"character"}, or \code{"both"}.}
 batch count as a \code{sidrar_provenance} attribute. URLs record the endpoint
 that supplied each batch; \code{requested_urls} is also included when a
 Cloudflare challenge required the official aggregate API fallback.}
+
+\item{batch_size}{Optional positive integer. Split each input query by
+period into batches of at most this many periods before downloading.
+This is not a bound on the number of values: a single period can still
+exceed the service limit. The default \code{NULL} preserves existing batches.}
+
+\item{checkpoint}{Optional path to a dedicated local directory. Successful
+batches are saved with checksums and a frozen query inventory. No values
+are saved to disk by default. Only use checkpoints you trust.}
+
+\item{resume}{Logical. Reuse verified completed batches in \code{checkpoint}
+(default \code{TRUE}). An existing checkpoint must match the original queries,
+value representation, batch size, and package version. \code{FALSE} requires
+a new directory; existing files are never silently cleared.}
 }
 \value{
 A base \code{\link[=data.frame]{data.frame()}}. When \code{provenance = TRUE}, its
@@ -26,6 +47,20 @@ A base \code{\link[=data.frame]{data.frame()}}. When \code{provenance = TRUE}, i
 Executes queries sequentially, checks that every batch has the same column
 names and types, and combines the rows without sorting or deduplicating
 them. Parallel requests are intentionally not used.
+}
+\details{
+Checkpoints are separate from the metadata cache. They preserve
+successful responses, including their original access times; they are not
+refreshed automatically and can span upstream revisions. Use a new
+directory for a fresh collection. Relative periods are resolved once and
+reused on resume, even if the current catalog has changed. Corruption,
+incompatible schemas, mismatched settings, and concurrent writers fail
+explicitly. An interrupted process may leave a \code{.sidrar-lock} directory;
+remove that lock only after confirming that no collector is still running.
+Results are still combined in memory; checkpoints are not an out-of-core
+database. Row order is not a key: join different extracts by identifiers.
+Warnings from completed batches are saved and signaled again on resume,
+so reuse does not hide incomplete-coverage diagnostics.
 }
 \examples{
 \dontrun{

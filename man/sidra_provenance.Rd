@@ -15,6 +15,8 @@ The provenance list, with \code{accessed_at}, \code{package_version},
 \code{batch_count}, \code{urls}, and \code{value_type}; or \code{NULL} when none is attached.
 When a fallback was used, \code{urls} records the actual endpoints and
 \code{requested_urls} records the original queries.
+Checkpointed collections also include \code{batch_accessed_at} (original
+download times) and \code{resumed} (logical flags for reused batches).
 }
 \description{
 Extract SIDRA result provenance

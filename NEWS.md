@@ -1,4 +1,20 @@
-# sidrar (development version)
+# sidrar 0.6.0
+
+* Split relative or complete SIDRA values URLs with `sidra_split()`, preserving
+  parameter order. Period selections `all`, `first`, `last`, and ranges can be
+  frozen to the official period inventory before downloading values.
+* Added opt-in period batching with `sidra_collect(batch_size = ...)` and
+  resumable local checkpoints with `checkpoint = ...`. Completed batches have
+  checksums and original access times; mismatched settings, schema drift,
+  corrupted files, and concurrent writers fail explicitly. No implicit disk
+  cache or change to `get_sidra()` is introduced.
+* `info_sidra()` can use official aggregate metadata and periods when the
+  original descriptor returns a browser challenge. Its five legacy components
+  are preserved; fields unavailable from the alternative source are disclosed
+  instead of fabricated. Both-source failures retain the original error.
+* Expanded offline compatibility tests across monthly, quarterly, annual, and
+  multiple-classification synthetic fixtures, including special symbols,
+  UTF-8, leading-zero identifiers, and comparison by keys rather than row order.
 
 * Validate the complete alternative-response schema on every fallback path,
   including canonical queries at default precision. Reject out-of-selection

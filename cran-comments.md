@@ -1,59 +1,62 @@
 ## Release summary
 
-This is a corrective update to sidrar 0.5.0 in response to upstream SIDRA
-Cloudflare access challenges reported since September 15, 2026 (GitHub #29).
-Compatible values queries can use IBGE's official aggregate API v3 after a
-recognized browser challenge. Unsupported selections fail explicitly rather
-than being silently changed. No dependencies, public arguments, exports, or
-default return contracts have been changed.
+sidrar 0.6.0 extends the official aggregate API fallback introduced in 0.5.1,
+covering the multi-geography and complete-period queries reported by users
+after the SIDRA browser-challenge changes. It adds strict response validation,
+configurable Retry-After limits, URL-based batching, resumable opt-in local
+checkpoints, and an official metadata fallback for info_sidra(). Unsupported
+selections still fail explicitly instead of being silently changed.
 
-This update also fixes the current CRAN check failures in test-collect.R,
-including the M1mac additional issue: a splitting test unintentionally called
-the live table descriptor. The test now mocks that descriptor and remains
-fully offline.
+There are no new dependencies or exports. The legacy get_sidra(), info_sidra(),
+and search_sidra() signatures and default return contracts are unchanged.
+Optional arguments were appended to sidra_collect(); existing calls are
+unaffected. No files are written by default. All examples and regular tests
+are offline; checkpoint tests use temporary directories and clean up.
 
-## Test environments
+## Test environments and results
 
-* Windows 11 x64 (build 26200), R 4.6.0 (2026-04-24 ucrt)
-* macbuilder, Apple M1, macOS Tahoe 26.6, R 4.6.1 Patched
-  (2026-07-27 r90311)
-* win-builder, Windows Server 2022 x64 (build 20348), R Under development
-  (unstable) (2026-09-16 r90549 ucrt)
+* Windows 11 x64 (build 26200), R 4.6.0 (2026-04-24 ucrt).
 
-## R CMD check results
+R CMD build and R CMD check --no-manual: 0 errors, 0 warnings, 0 notes.
 
-`R CMD check --as-cran` was run locally on the source tarball with CRAN
-incoming remote checks and PDF/HTML manuals enabled. The exact same source
-tarball was checked on macbuilder (including its PDF manual):
-https://mac.R-project.org/macbuilder/results/1789671693-2ea5a02f7b9a0712/
+R CMD check --as-cran on the exact same source tarball, with incoming remote
+checks and PDF/HTML manuals enabled: 0 errors, 0 warnings, 1 NOTE:
 
-0 errors | 0 warnings | 0 notes
+    Days since last update: 1
 
-The same tarball passed win-builder R-devel, including CRAN incoming checks
-and PDF/HTML manuals: 0 errors, 0 warnings, 0 notes.
-https://win-builder.r-project.org/FhE9jMW9Key9/
+This check was run on September 19, 2026; sidrar 0.5.1 was published on
+September 18. The maintainer chose to wait for the previous version's CRAN
+check matrix to finish updating before submitting 0.6.0. These comments will
+be refreshed before the actual upload; this file is not a submission receipt.
 
-The local package test suite passed 691 expectations, with no failures or
-warnings and seven opt-in live tests skipped. A separate bounded live check
-of the installed 0.5.1 reproduced the query from issue #29 using only api =
-url and returned all four expected observations through the official fallback.
+The final test suite passed 2420 expectations, with no failures or test
+warnings and nine opt-in live tests skipped. Bounded live queries succeeded
+for IPCA, PNAD, Census, and agricultural data. Raw values from the primary and
+alternative official APIs matched by identifiers for a four-observation
+query with five classifications in two different classification orders.
+The checked tarball also passed a two-period checkpoint/resume smoke test.
+
+The exact tarball was uploaded to win-builder R-devel on September 19;
+the email result is pending. No R-devel result is claimed here yet.
+
+## Existing CRAN checks
+
+At the September 19 preflight, the check matrix still mixed sidrar 0.5.0
+and 0.5.1. The outstanding r-patched-linux test error was for 0.5.0 and the
+unintended descriptor request already corrected in 0.5.1. The displayed
+0.5.1 checks were OK. That offline regression test remains covered in 0.6.0.
 
 ## Downstream compatibility
 
-The current reverse imports were checked against the final source tarball
-in an isolated library with `R CMD check --no-manual` and
-`_R_CHECK_FORCE_SUGGESTS_=true`:
+The current reverse imports were checked against the final 0.6.0 tarball
+in an isolated library with R CMD check --no-manual and all required
+dependencies available:
 
-* `datazoom.amazonia` 1.2.0: OK
-* `PNADCperiods` 0.1.2: OK
-* `SidraFacil` 1.0.2: OK
+* datazoom.amazonia 1.2.0: OK
+* PNADCperiods 0.1.2: OK
+* SidraFacil 1.0.2: OK
 
-PNADCperiods' internal testthat reporter counted 19 warnings and 15 skips,
-with 1602 passes and no failures. A complete baseline check with sidrar 0.5.0
-returned the same counts and Status OK; no increase was observed.
-
-Their uses of the legacy `get_sidra()` and `info_sidra()` interfaces were also
-audited. Compatibility tests in `sidrar` cover the existing argument order,
-base `data.frame` output, Portuguese column names and order, numeric `Valor`,
-relative percent-encoded API paths, and the historical `info_sidra()` list
-structure.
+PNADCperiods' internal test reporter counted 19 warnings and 15 skips,
+with 1602 passes and no failures. These counts are identical to the recorded
+0.5.1 baseline. All three checks finished with 0 errors, warnings, or notes;
+no new downstream regression was observed.
